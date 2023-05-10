@@ -1,0 +1,43 @@
+eureka:
+  client:
+    fetchRegistry: false
+    serviceUrl:
+#      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-server:8761/eureka/
+
+spring:
+  application:
+    name: auth
+
+  datasource:
+#    root-url: jdbc:postgresql://localhost:7777/
+    root-url: jdbc:postgresql://data-base:5432/
+    data-base-name: auth
+#    url: jdbc:postgresql://localhost:7777/auth
+    url: jdbc:postgresql://data-base:5432/auth
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+
+server:
+  port: 80
+
+
+admin_login: admin
+admin_password: admin
+
+
+login_jwt_secret: login_jwt
+
+network_auth_jwt_secret: network_jwt
+
+internal_registration_jwt_secret: internal_registration_jwt
+auth_url: http://localhost
+service_login: auth
+service_password: auth_password

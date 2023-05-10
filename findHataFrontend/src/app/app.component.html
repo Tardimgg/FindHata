@@ -1,0 +1,41 @@
+<header>
+
+  <nav class="topnav">
+    <a class="mb-0.5" routerLink="/"><img src="favicon.ico" alt="логотип" width="50" height="40"></a>
+
+    <a class="topnav_hid_elem fast-ref" routerLink="/">Главная страница</a>
+    <a class="topnav_hid_elem fast-ref" href="layouts/publications.html">Купить</a>
+    <a class="topnav_hid_elem fast-ref" href="layouts/create-publication.html">Снять в аренду</a>
+    <a class="topnav_hid_elem fast-ref" routerLink="create-proposal">Создать объявление</a>
+    <a class="topnav_hid_elem fast-ref" href="layouts/message.html">Сообщить о проблеме</a>
+    <a class="topnav_hid_elem fast-ref" href="layouts/contacts.html">Помощь</a>
+    <a *ngIf="userLogin == ''" class="topnav_hid_elem fast-ref topnav-right" routerLink="/login">Вход</a>
+    <div class="topnav-right">
+      <a routerLink="dialogs" class="topnav_hid_elem fast-ref" *ngIf="userLogin != ''">{{userLogin}}</a>
+      <button *ngIf="userLogin != ''" (click)="logout()" class="topnav_hid_elem fast-ref ml-2">Выйти</button>
+    </div>
+
+
+    <input class="topnav-menu-btn-checkbox" id="menu-toggle" type="checkbox"/>
+    <label class="topnav-menu-btn-label" for="menu-toggle">
+      <span></span>
+    </label>
+
+    <ul class="topnav-menu" type="none">
+      <li><a class="topnav-menu-item" href="/login">Вход</a></li>
+      <li><a class="topnav-menu-item" href="index.html">Главная страница</a></li>
+      <li><a class="topnav-menu-item" href="layouts/publications.html">Статьи</a></li>
+      <li><a class="topnav-menu-item" href="layouts/create-publication.html">Написать статью</a></li>
+      <li><a class="topnav-menu-item" href="layouts/message.html">Сообщить о проблеме</a></li>
+      <li><a class="topnav-menu-item" href="layouts/contacts.html">Контакты</a></li>
+    </ul>
+
+  </nav>
+
+</header>
+
+<div class="mt-12 content-center">
+  <router-outlet></router-outlet>
+</div>
+
+

@@ -1,0 +1,29 @@
+<!--<div class="ml-20 mt-20 mr-5 mb-10 flex flex-row">-->
+<div class="ml-20 mt-20 mr-5 mb-10 flex flex-wrap justify-around content-around">
+  <div class="w-1/2">
+    <h2>{{ proposal.title }}</h2>
+
+    <h4>{{ proposal.price | currency: "₽": "₽": "0.0"}}</h4>
+
+    <div class="w-full">
+      <swiper class=" card-img-top" [config]="config">
+        <ng-container *ngFor="let image of proposal.images; index as i">
+          <ng-template swiperSlide class="items-center h-auto justify-center flex">
+            <img src="{{ image }}" style="height: 30rem; width: auto" alt="...">
+          </ng-template>
+        </ng-container>
+      </swiper>
+    </div>
+
+    <h4>Адрес:</h4>
+    <p>{{proposal.location}}</p>
+
+    <h4>Описание: </h4>
+    <p style="white-space: pre-wrap;">{{ proposal.description }}</p>
+
+    <button style="color: red" (click)="removeProposal()" *ngIf="removeAccess">Удалить объявление</button>
+
+  </div>
+
+  <app-chat [proposalId]="proposal.proposalId" [otherId]="proposal.ownerId"></app-chat>
+</div>

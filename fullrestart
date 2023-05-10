@@ -1,0 +1,7 @@
+#!/bin/bash
+
+docker compose down --volumes &&
+docker rmi findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server
+./build_jars &&
+docker compose build &&
+docker compose up;

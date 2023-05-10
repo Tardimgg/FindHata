@@ -1,0 +1,48 @@
+
+
+<div class="card" style="height: 18rem; width: 18rem; border-width: 2px; box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);">
+
+<!--  <img src="favicon.ico" class="card-img-top" alt="...">-->
+
+<!--  <swiper-container>-->
+<!--    <img class="swiper-slide" *ngFor="let img of proposal.images" [src]="img" />-->
+<!--    <img class="swiper-slide" *ngFor="let img of proposal.images" [src]="img" />-->
+<!--    <img class="swiper-slide" *ngFor="let img of proposal.images" [src]="img" />-->
+<!--  </swiper-container>-->
+
+    <swiper class="card-img-top" [config]="config">
+      <ng-container *ngFor="let image of proposal.images; index as i">
+        <ng-template swiperSlide class="items-center h-auto justify-center flex">
+          <img src="{{ image }}" style="height: 10rem;" alt="...">
+<!--          <ng-template swiperSlide>Slide {{ i }}</ng-template>-->
+        </ng-template>
+      </ng-container>
+
+<!--      <ng-template swiperSlide>Slide 1</ng-template>-->
+    </swiper>
+
+
+
+<!--  <swiper [config]="config">-->
+<!--    <div class="swiper-wrapper">-->
+<!--        <img src="{{proposal.images[1]}}" class="card-img-top" alt="...">-->
+<!--    </div>-->
+<!--    <div class="swiper-pagination"></div>-->
+<!--    <div class="swiper-button-next"></div>-->
+<!--    <div class="swiper-button-prev"></div>-->
+<!--  </swiper>-->
+
+<!--  <img src="{{proposal.images[0]}}" class="card-img-top" alt="...">-->
+  <div class="card-body">
+    <a routerLink="/proposal/{{ proposal.id }}" class="card-title">{{ proposal.title }}</a>
+    <p class="card-text">{{ proposal.price | currency: "₽": "₽": "0.0"}}</p>
+    <p class="card-text">{{ proposal.location}}</p>
+  </div>
+</div>
+
+<!--<div class="">-->
+<!--  <a href="www.ya.ru">{{title}}</a>-->
+<!--  <h2><span>{{price | uppercase | currency: "₽"}}</span></h2>-->
+<!--  <h3>Кок: {{description}}</h3>-->
+<!--  <h3>Кок: {{location}}</h3>-->
+<!--</div>-->

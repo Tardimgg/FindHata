@@ -1,0 +1,44 @@
+<form class="mt-20 ml-20 mr-10">
+
+  <div class="row mb-3">
+    <label for="inputEmail3" class="col-sm-2 col-form-label">Краткое описание</label>
+    <div class="col-sm-10">
+      <input [(ngModel)]="proposal.title" name="title" type="email" class="form-control" id="inputEmail3">
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <label for="inputTags" class="col-sm-2 col-form-label">Описание</label>
+    <div class="col-sm-10">
+      <textarea [(ngModel)]="proposal.description" name="description" type="text" class="form-control" rows="5" id="inputTags"></textarea>
+    </div>
+  </div>
+
+  <div class="row mb-3">
+    <label for="inputTags1" class="col-sm-2 col-form-label">Адрес</label>
+    <div class="col-sm-10">
+      <input [(ngModel)]="proposal.location" name="location" type="text" class="form-control" id="inputTags1">
+    </div>
+  </div>
+
+  <div class="input-group mb-3">
+    <input (change)="handleFileInput($event)" multiple type="file" accept="image/png, image/jpeg" class="form-control" id="images">
+  </div>
+
+  <div class="input-group mb-3">
+    <div class="input-group-prepend">
+      <span class="input-group-text">₽</span>
+    </div>
+    <input [(ngModel)]="proposal.price" name="price" type="number" class="form-control" aria-label="Amount (to the nearest dollar)">
+    <div class="input-group-append">
+      <span class="input-group-text">.00</span>
+    </div>
+  </div>
+
+  <button (click)="createProposal()" class="btn btn-primary">Опубликовать</button>
+  <h4 style="color: red" class="so-info">{{textError}}</h4>
+
+
+</form>
+
+

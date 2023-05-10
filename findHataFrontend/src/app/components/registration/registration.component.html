@@ -1,0 +1,15 @@
+<main style="position: relative; padding-top: 25vh; min-height: 500px; height: 100vh; margin-top: 50px; background-color: black">
+
+  <form class="entrance">
+    <div class="name">Регистрация</div>
+    <input (change)="refresh()" [(ngModel)]="loginForm.login" name="login" required placeholder="Логин" type="search" class="inputVal">
+    <input (change)="refresh()" [(ngModel)]="loginForm.email" name="email" required placeholder="Почта" type="email" class="inputVal">
+    <input (change)="refresh()" [(ngModel)]="loginForm.password" name="password" required placeholder="Пароль" type="password" class="inputVal">
+    <button (click)="registration()" id="enter_btn" class="okBtn">Зарегистрироваться</button>
+    <h4 style="color: red" class="so-info">{{text_error}}</h4>
+
+
+  </form>
+
+
+</main>

@@ -1,0 +1,15 @@
+<main style="position: relative; padding-top: 25vh; min-height: 500px; height: 100vh; margin-top: 50px; background-color: black">
+
+  <form class="entrance">
+    <h3 class="name">Авторизация</h3>
+    <input (change)="refresh()" placeholder="Логин" [(ngModel)]="loginForm.login" name="login" required type="search" class="inputVal">
+    <input (change)="refresh()" placeholder="Пароль"  [(ngModel)]="loginForm.password" name="password" required type="search" class="inputVal">
+    <button (click)="login()" id="enter_btn"  class="okBtn">Войти</button>
+<!--    <a href="/registration"><h4 class="so-info">Забыли пароль?</h4></a>-->
+    <a routerLink="/registration"><h4 class="so-info">Ещё нет аккаунта?</h4></a>
+    <h4 style="color: red" class="so-info">{{textError}}</h4>
+
+  </form>
+
+
+</main>

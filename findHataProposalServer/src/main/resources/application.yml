@@ -1,0 +1,38 @@
+eureka:
+  client:
+    fetchRegistry: false
+    serviceUrl:
+#      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-server:8761/eureka/
+
+spring:
+  application:
+    name: proposals
+
+  datasource:
+#    root-url: jdbc:postgresql://localhost:7777/
+    root-url: jdbc:postgresql://data-base:5432/
+    data-base-name: proposal
+#    url: jdbc:postgresql://localhost:7777/proposal
+    url: jdbc:postgresql://data-base:5432/proposal
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+
+server:
+  port: 80
+
+
+
+network_auth_jwt_secret: network_jwt
+
+internal_registration_jwt_secret: internal_registration_jwt
+auth_url: http://gateway-server/auth
+service_login: proposal
+service_password: proposal_password

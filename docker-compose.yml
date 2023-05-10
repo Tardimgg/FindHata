@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+
+  data-base:
+    build: ./findHataDataBase
+    environment:
+        - POSTGRES_PASSWORD=postgres
+    ports:
+        - "7777:5432"
+
+  discovery-server:
+    build: ./findHataServerDiscovery/docker
+    ports:
+        - "8761:8761"
+
+  notification-server:
+    build: ./findHataNotificationServer/docker
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+    depends_on:
+      - data-base
+      - discovery-server
+
+  gateway-server:
+    build: ./findHataGateway/docker
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+    ports:
+        - "8080:80"
+    depends_on:
+      - discovery-server
+
+  messaging-server:
+    build: ./findHataMessagingServer/docker
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+    ports:
+        - "8082:80"
+    depends_on:
+      - data-base
+      - discovery-server
+
+  proposal-server:
+    build: ./findHataProposalServer/docker
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+        - externalUrl=http://127.0.0.1:8080
+        - externalUrlWithoutPort=http://127.0.0.1
+        - uploadServerPort=8081
+    ports:
+        - "8081:81"
+    depends_on:
+      - data-base
+      - discovery-server
+
+  auth-server:
+    build: ./findHataAuth/docker
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+        - externalUrl=http://127.0.0.1:8080
+    depends_on:
+      - data-base
+      - discovery-server
+
+  frontend-server:
+    build: ./findHataFrontend
+    ports:
+      - "4200:4200"

@@ -1,0 +1,65 @@
+#!/bin/bash
+cd ./databaseCreator && ./gradlew shadowJar &&  cd ../ &&
+
+cd ./result && ./gradlew shadowJar &&  cd ../ &&
+
+cd ./tokenService && ./gradlew jar &&  cd ../ &&
+cd ./tokenService && ./gradlew shadowJar &&  cd ../ &&
+
+mkdir -p ./webApiClient/libs &&
+cp ./tokenService/build/libs/tokenService-1.0-all.jar ./webApiClient/libs/ &&
+
+cd ./webApiClient && ./gradlew shadowJar &&  cd ../ &&
+
+mkdir -p ./externalRequestFilter/libs &&
+cp ./tokenService/build/libs/tokenService-1.0-all.jar ./externalRequestFilter/libs/ &&
+
+cd ./externalRequestFilter && ./gradlew shadowJar &&  cd ../ &&
+
+
+
+mkdir -p ./findHataAuth/libs &&
+cp ./webApiClient/build/libs/webApiClient-1.0-all.jar ./findHataAuth/libs/ &&
+cp ./result/build/libs/result-1.0-all.jar ./findHataAuth/libs/ &&
+cp ./databaseCreator/build/libs/databaseCreator-1.0-all.jar ./findHataAuth/libs/ &&
+cp ./externalRequestFilter/build/libs/externalRequestFilter-1.0-all.jar ./findHataAuth/libs/ &&
+
+mkdir -p ./findHataGateway/libs &&
+cp ./webApiClient/build/libs/webApiClient-1.0-all.jar ./findHataGateway/libs/ &&
+cp ./result/build/libs/result-1.0-all.jar ./findHataGateway/libs/ &&
+
+mkdir -p ./findHataNotificationServer/libs &&
+cp ./tokenService/build/libs/tokenService-1.0-all.jar ./findHataNotificationServer/libs/ &&
+cp ./databaseCreator/build/libs/databaseCreator-1.0-all.jar ./findHataNotificationServer/libs/ &&
+cp ./result/build/libs/result-1.0-all.jar ./findHataNotificationServer/libs/ &&
+cp ./externalRequestFilter/build/libs/externalRequestFilter-1.0-all.jar ./findHataNotificationServer/libs/ &&
+
+mkdir -p ./findHataMessagingServer/libs &&
+cp ./webApiClient/build/libs/webApiClient-1.0-all.jar ./findHataMessagingServer/libs/ &&
+cp ./databaseCreator/build/libs/databaseCreator-1.0-all.jar ./findHataMessagingServer/libs/ &&
+cp ./result/build/libs/result-1.0-all.jar ./findHataMessagingServer/libs/ &&
+cp ./externalRequestFilter/build/libs/externalRequestFilter-1.0-all.jar ./findHataMessagingServer/libs/ &&
+
+mkdir -p ./findHataProposalServer/libs &&
+cp ./result/build/libs/result-1.0-all.jar ./findHataProposalServer/libs/ &&
+cp ./databaseCreator/build/libs/databaseCreator-1.0-all.jar ./findHataProposalServer/libs/ &&
+cp ./externalRequestFilter/build/libs/externalRequestFilter-1.0-all.jar ./findHataProposalServer/libs/ &&
+
+
+
+cd ./findHataServerDiscovery && ./gradlew copyJar &&  cd ../ &&
+
+cd ./findHataAuth && ./gradlew copyJar && cd ../ &&
+
+cd ./findHataGateway && ./gradlew copyJar && cd ../ &&
+
+cd ./findHataNotificationServer && ./gradlew copyJar && cd ../ &&
+
+cd ./findHataMessagingServer && ./gradlew copyJar && cd ../ &&
+
+cd ./findHataProposalServer && ./gradlew copyJar && cd ../ &&
+
+cd ./findHataUploadServer && ./gradlew copyJar && cd ../ &&
+mv ./findHataUploadServer/docker/findHataUploadServer-0.0.1-SNAPSHOT.jar ./findHataProposalServer/docker/findHataUploadServer-0.0.1-SNAPSHOT.jar &&
+
+wait

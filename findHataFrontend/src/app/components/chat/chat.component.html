@@ -1,0 +1,43 @@
+<div *ngIf="!smallMode" class="ml-10 bg-gray-300 mr-0 relative" style="height: 82vh; width: 30em">
+
+  <h3  class="ml-2 mt-5">Чат с продавцом</h3>
+<!--  <h3 *ngIf="withBuyer" class="ml-2 mt-5">{{customTitle}}</h3>-->
+
+  <ul class="list-group" style="overflow:scroll; height:65vh; flex-direction: column-reverse">
+
+    <li *ngFor="let message of messages" class="list-group-item">{{message}}</li>
+
+  </ul>
+
+  <div class="absolute bottom-5 right-5 left-3" >
+    <div (keyup.enter)="pushMessage()" class="input-group mt-2">
+      <input id="input-message" type="search" class="form-control rounded mr-3" placeholder="Напишите сообщение" aria-label="Search"
+             aria-describedby="search-addon" [(ngModel)]="curMessage"/>
+      <button id="input-button" (click)="pushMessage()" type="button" class="btn btn-outline-primary">Отправить</button>
+    </div>
+
+  </div>
+
+</div>
+
+<div *ngIf="smallMode" class="ml-10 bg-gray-300 mr-0 relative" style="height: 60vh; width: 22em">
+
+  <h3 class="ml-2 mt-5">{{customTitle}}</h3>
+
+  <ul class="list-group" style="overflow:scroll; height:40vh; flex-direction: column-reverse">
+
+    <li *ngFor="let message of messages" class="list-group-item">{{message}}</li>
+
+  </ul>
+
+  <div class="absolute bottom-5 right-5 left-3" >
+    <div (keyup.enter)="pushMessage()" class="input-group mt-2">
+      <input id="input-message1" type="search" class="form-control rounded mr-3" placeholder="Напишите сообщение" aria-label="Search"
+             aria-describedby="search-addon" [(ngModel)]="curMessage"/>
+      <button id="input-button1" (click)="pushMessage()" type="button" class="btn btn-outline-primary">Отправить</button>
+    </div>
+
+  </div>
+
+</div>
+

@@ -1,0 +1,9 @@
+<div class="ml-20 mb-20 mt-20">
+  <h2>Диалоги</h2>
+  <div class="flex flex-row flex-wrap gap-3">
+
+
+    <app-chat *ngFor="let otherId of owners" [isSeller]="otherId[3]" [proposalId]="otherId[2]" [customTitle]="otherId[1]" [smallMode]="true" [otherId]="otherId[0]"></app-chat>
+
+  </div>
+</div>

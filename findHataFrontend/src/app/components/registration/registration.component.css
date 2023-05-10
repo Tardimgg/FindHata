@@ -1,0 +1,223 @@
+:root {
+  --transparent-color: rgba(255, 255, 255, 0.2);
+}
+
+.small-btn {
+
+  /*display: flex;*/
+  /*align-items: center;*/
+
+  background-color: black;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  position: relative;
+
+}
+
+.small-btn-img {
+  position: absolute;
+  left: 3px;
+  top: 5px;
+  width: 30px;
+  height: 30px;
+  transform-style: preserve-3d;
+}
+
+.small-btn-img::after {
+  visibility: hidden;
+  content: '';
+  position: absolute;
+
+  transform: translateZ(-1px);
+
+  top: -55px;
+  left: -3px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(255,0,0,100%) 0%, rgba(255,165,0,100%) 100%);
+}
+
+.small-btn:hover .small-btn-img::after {
+  visibility: visible;
+  transform: translateY(50px) translateZ(-1px);
+  transition-duration: 0.5s;
+}
+
+@keyframes fly-before {
+  from {
+    transform: translate(0px);
+  }
+  30% {
+    transform: translate(10vw, 15vh);
+
+  }
+  70% {
+    transform: translate(8vw, -15vh);
+
+  }
+  to {
+    transform: translate(0px);
+
+  }
+
+}
+
+@keyframes fly-after {
+  from {
+    transform: translate(0px);
+  }
+  30% {
+    transform: translate(-10vw, -15vh);
+
+  }
+  70% {
+    transform: translate(-10vw, 5vh);
+
+  }
+  to {
+    transform: translate(0px);
+
+  }
+
+}
+
+/*.entrance:before {*/
+/*  content: '';*/
+/*  height: 3vmax;*/
+/*  width: 3vmax;*/
+/*  left: -3.5vmax;*/
+/*  background: var(--transparent-color);*/
+/*  border-radius: 0.5em;*/
+/*  backdrop-filter: blur(2px);;*/
+/*  position: absolute;*/
+/*  animation-name: fly-before;*/
+/*  animation-delay: 0.5s;*/
+/*  animation-iteration-count: infinite;*/
+/*  animation-duration: 3s;*/
+/*  z-index: 10;*/
+/*}*/
+
+
+/*.entrance:after {*/
+/*  content: '';*/
+/*  height: 3vmax;*/
+/*  width: 3vmax;*/
+/*  right: -3.5vmax;*/
+/*  background: var(--transparent-color);*/
+/*  border-radius: 0.5em;*/
+/*  backdrop-filter: blur(2px);*/
+/*  position: absolute;*/
+/*  animation-name: fly-after;*/
+/*  animation-delay: 0.5s;*/
+/*  animation-iteration-count: infinite;*/
+/*  animation-duration: 3s;*/
+/*  z-index: 10;*/
+/*}*/
+
+
+.big-block {
+  height: 80px;
+  width: 80px;
+  right: -38px;
+  top: -55px;
+  background: var(--transparent-color);
+  backdrop-filter: blur(2px);
+  border-radius: 1em;
+
+  /*animation-name: fly-after;*/
+  /*animation-delay: 0.5s;*/
+  /*animation-iteration-count: infinite;*/
+  /*animation-duration: 3s;*/
+  position: absolute;
+  z-index: 100;
+}
+
+.big-block2 {
+  height: 80px;
+  width: 80px;
+  left: -38px;
+  bottom: -55px;
+  background: var(--transparent-color);
+  backdrop-filter: blur(2px);
+  border-radius: 1em;
+
+  /*animation-name: fly-after;*/
+  /*animation-delay: 0.5s;*/
+  /*animation-iteration-count: infinite;*/
+  /*animation-duration: 3s;*/
+  position: absolute;
+  z-index: 100;
+}
+
+
+.entrance {
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+
+  background: rgba(255, 255, 255, 0.2);
+  height: 310px;
+  width: 300px;
+  /*backdrop-filter: blur(5px);*/
+  border-radius: 1rem;
+  z-index: 0;
+}
+
+.entrance .name {
+  color: #ECEFF1;
+  font-size: 1.5em;
+  /*text-decoration: underline;*/
+  margin-left: 30px;
+  padding-top: 30px;
+}
+
+.entrance .inputVal {
+  padding-left: 10px;
+  margin-top: 20px;
+  margin-left: 20px;
+  /*margin: 20px;*/
+  /*margin-right: 20px;*/
+  /*margin-left: 20px;*/
+  width: 260px;
+  /*width:100%;*/
+
+  /*width: 30ch;*/
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 2rem;
+  border: none;
+  /*size: 10px;*/
+
+  color: white;
+}
+
+.inputVal::placeholder {
+  color: white;
+}
+
+.entrance .okBtn {
+  background-color: #ECEFF1;
+  content: "Войти";
+  height: 30px;
+  width: 185px;
+  padding: 1px;
+
+  font-size: 1.1em;
+
+  margin-top: 20px;
+  margin-left: 20px;
+  margin-bottom: 10px;
+  border-radius: 2rem;
+}
+
+.entrance .so-info {
+  font-size: 1em;
+  color: white;
+  margin-left: 20px;
+  margin-top: 5px;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}

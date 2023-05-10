@@ -1,0 +1,32 @@
+eureka:
+  client:
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://discovery-server:8761/eureka/
+#      defaultZone: http://localhost:8761/eureka/
+
+spring:
+  application:
+    name: notification
+
+  datasource:
+    root-url: jdbc:postgresql://data-base:5432/
+#    root-url: jdbc:postgresql://localhost:7777/
+    data-base-name: notification
+    url: jdbc:postgresql://data-base:5432/notification
+#    url: jdbc:postgresql://localhost:7777/notification
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+
+server:
+  port: 80
+
+network_auth_jwt_secret: network_jwt
+
