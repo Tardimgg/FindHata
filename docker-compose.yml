@@ -35,8 +35,8 @@ services:
     build: ./findHataMessagingServer/docker
     environment:
         - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
-    ports:
-        - "8082:80"
+#     ports:
+#         - "8082:80"
     depends_on:
       - data-base
       - discovery-server
