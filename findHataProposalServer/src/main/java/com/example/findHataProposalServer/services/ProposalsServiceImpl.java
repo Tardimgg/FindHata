@@ -58,7 +58,8 @@ public class ProposalsServiceImpl implements ProposalsService {
                 List<ImagePath> paths = new ArrayList<>();
                 for (String image: proposal.getImages()) {
                     ImagePath imagePath = ImagePath.builder()
-                            .path(externalUrl + "/" + serviceName + image)
+//                            .path(externalUrl + "/" + serviceName + image)
+                            .path("/" + serviceName + image)
                             .build();
 
                     imagePathRepository.save(imagePath);
@@ -142,12 +143,13 @@ public class ProposalsServiceImpl implements ProposalsService {
 
     @Override
     public List<ShortInfoProposal> getAllWithKeyword(String keyword) {
+        String keywordFinal = keyword.toLowerCase();
         List<ProposalBD> proposals = proposalRepository.findAll(
                 (Specification<ProposalBD>) (root, query, criteriaBuilder) -> {
 
-            Predicate predicate1 = criteriaBuilder.like(root.get("title"), "%" + keyword + "%");
-            Predicate predicate2 = criteriaBuilder.like(root.get("description"), "%" + keyword + "%");
-            Predicate predicate3 = criteriaBuilder.like(root.get("location"), "%" + keyword + "%");
+            Predicate predicate1 = criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + keywordFinal + "%");
+            Predicate predicate2 = criteriaBuilder.like(criteriaBuilder.lower(root.get("description")), "%" + keywordFinal + "%");
+            Predicate predicate3 = criteriaBuilder.like(criteriaBuilder.lower(root.get("location")), "%" + keywordFinal + "%");
 
             return criteriaBuilder.or(predicate1, predicate2, predicate3);
         });
@@ -156,9 +158,9 @@ public class ProposalsServiceImpl implements ProposalsService {
             String fullText = o1.getTitle() + o1.getDescription() + o1.getLocation();
             String fullText2 = o2.getTitle() + o2.getDescription() + o2.getLocation();
             return Integer.compare(
-                    KMP.solve(fullText.toLowerCase(), keyword.toLowerCase()).size(),
-                    KMP.solve(fullText2.toLowerCase(), keyword.toLowerCase()).size() * -1
-            );
+                    KMP.solve(fullText.toLowerCase(), keywordFinal).size(),
+                    KMP.solve(fullText2.toLowerCase(), keywordFinal).size()
+            ) * -1;
         });
 
         return convertProposal(proposals);

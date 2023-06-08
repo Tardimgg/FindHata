@@ -12,7 +12,9 @@ import {AddProposalRequest} from "../entities/requests/add-proposal-request";
 export class ImageService {
 
   // private url = 'http://127.0.0.1:8080/proposals/api/proposal/get-all';
-  private url = 'http://127.0.0.1:8081/';
+  // private url = 'http://127.0.0.1:8081/';
+  private url = '/api/';
+
 
   constructor(private httpClient: HttpClient) { }
 

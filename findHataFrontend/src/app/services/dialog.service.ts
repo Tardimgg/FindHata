@@ -14,7 +14,8 @@ import {GetRecentPostsResponse} from "../entities/responses/get_recent_posts_res
 })
 export class DialogService {
 
-  private url = 'http://127.0.0.1:8080/messenger/api/message';
+  // private url = 'http://127.0.0.1:8080/messenger/api/message';
+  private url = '/api/messenger/api/message';
 
   constructor(private httpClient: HttpClient) { }
 

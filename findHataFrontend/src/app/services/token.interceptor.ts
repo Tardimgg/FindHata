@@ -26,7 +26,7 @@ export class TokenInterceptor implements HttpInterceptor {
     //
     // newRequest.headers.set("accessToken", token)
     // console.log(newRequest);
-    const clonedRequest = request.clone({ headers: request.headers.append('AccessToken', token) });
+    const clonedRequest = request.clone({ headers: request.headers.append('accessToken', token) });
 
 
     return next.handle(clonedRequest);

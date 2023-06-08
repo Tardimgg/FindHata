@@ -13,7 +13,7 @@
     <swiper class="card-img-top" [config]="config">
       <ng-container *ngFor="let image of proposal.images; index as i">
         <ng-template swiperSlide class="items-center h-auto justify-center flex">
-          <img src="{{ image }}" style="height: 10rem;" alt="...">
+          <img src="{{ image }}" style="display: block; max-width: 100%; max-height: 100%;" alt="...">
 <!--          <ng-template swiperSlide>Slide {{ i }}</ng-template>-->
         </ng-template>
       </ng-container>

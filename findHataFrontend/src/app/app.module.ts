@@ -49,7 +49,7 @@ const appRoutes: Routes = [
     DialogsComponent
   ],
   imports: [
-    RouterModule.forRoot(appRoutes),
+    RouterModule.forRoot(appRoutes, {scrollPositionRestoration: 'enabled'}),
     BrowserModule,
     HttpClientModule,
     SwiperModule,

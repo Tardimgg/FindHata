@@ -32,6 +32,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,8 +48,10 @@ public class UserServiceImpl implements UserService {
     @Value("${login_jwt_secret}")
     String loginJwtSecret;
 
-    @Value("${externalUrl}")
-    String externalUrl;
+//    @Value("${externalUrl}")
+//    String externalUrl;
+    @Autowired
+    ExternalUrlService externalUrlService;
 
     @Value("${service_login}")
     String serviceLogin;
@@ -121,28 +124,15 @@ public class UserServiceImpl implements UserService {
                     .bodyToMono(AddEndpointResponse.class)
                     .flatMap((v) -> {
                         if (v.getStatus().equals("ok")) {
-
-                            Map<String, Object> mapToken = new HashMap<>();
-                            mapToken.put("userId", createdUser.getId());
-                            mapToken.put("mission", "confirmAlternativeConnection");
-
-                            TokenService tokenService = new TokenService(loginJwtSecret);
-                            String token = tokenService.generateRawToken(mapToken, 30 * 60 * 1000);
-
-                            Map<String, Object> pushRequest = new HashMap<>();
-                            pushRequest.put("toUserId", createdUser.getId());
-                            pushRequest.put("title", "Подтверждение регистрации");
-                            String message = "Для подтверждения регистрации перейдите по ссылке: " +
-                                    externalUrl + "/auth/api/users/confirm-alternative-connection?token=" + token;
-
-                            pushRequest.put("message", message);
-
-                            return webClient.post()
-                                    .uri("notification/push")
-                                    .body(CustomInserter.fromValue(pushRequest))
-                                    .retrieve()
-                                    .bodyToMono(String.class)
-                                    .map((response) -> Mono.empty());
+                            return createConfirmationMessage(createdUser)
+                                    .flatMap(pushRequest ->
+                                            webClient.post()
+                                                    .uri("notification/push")
+                                                    .body(CustomInserter.fromValue(pushRequest))
+                                                    .retrieve()
+                                                    .bodyToMono(String.class)
+                                                    .flatMap((response) -> Mono.empty())
+                                    );
                         } else {
                             log.warn("The user transmitted incorrect alternative communication data: "
                                     + v.getError());
@@ -162,6 +152,28 @@ public class UserServiceImpl implements UserService {
         } else {
             return Result.err("The user already exists");
         }
+    }
+
+    public Mono<Map<String, Object>> createConfirmationMessage(MyUser user) {
+        Map<String, Object> mapToken = new HashMap<>();
+        mapToken.put("userId", user.getId());
+        mapToken.put("mission", "confirmAlternativeConnection");
+
+        TokenService tokenService = new TokenService(loginJwtSecret);
+        String token = tokenService.generateRawToken(mapToken, 30 * 60 * 1000);
+
+        return externalUrlService.getExternalUrl()
+                .map(externalUrl -> {
+                    Map<String, Object> pushRequest = new HashMap<>();
+                    pushRequest.put("toUserId", user.getId());
+                    pushRequest.put("title", "Подтверждение регистрации");
+                    String message = "Для подтверждения регистрации перейдите по ссылке: " +
+                            externalUrl
+                            + "/api/auth/api/users/confirm-alternative-connection?token=" + token;
+
+                    pushRequest.put("message", message);
+                    return pushRequest;
+                });
     }
 
     public Result<String, String> confirmAlternativeConnection(String token) {

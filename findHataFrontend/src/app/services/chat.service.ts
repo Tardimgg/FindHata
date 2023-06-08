@@ -32,16 +32,15 @@ export class ChatService {
     this.token = token;
     this.proposalId = proposalId;
 
-    console.log("destination ", "/room/" + proposalId + "_" + toId + "_" + fromId + "/queue/messages")
-
-
     let headers: StompHeaders = {
       login: token
     }
 
     this.rxStomp = new RxStomp();
+    let brokerURL = 'wss://' + document.location.host + "/api-chat/messenger/ws"
     this.rxStomp.configure({
-      brokerURL: 'ws://localhost:8080/messenger/ws',
+      // brokerURL: 'ws://localhost:8080/messenger/ws',
+      brokerURL: brokerURL,
       // connectHeaders: {
       //   login: 'guest',
       //   passcode: 'guest',
@@ -72,8 +71,6 @@ export class ChatService {
       message: message,
       proposalId: this.proposalId
     }
-
-    console.log("mes: ", mes);
 
     let headers: StompHeaders = {
       login: this.token

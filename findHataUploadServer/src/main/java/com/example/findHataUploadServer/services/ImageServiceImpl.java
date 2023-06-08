@@ -19,6 +19,9 @@ public class ImageServiceImpl implements ImageService {
     @Value("${uploadServerPort}")
     String port;
 
+    @Value("${externalServiceName}")
+    String serviceName;
+
     @PostConstruct
     void init() {
         ApplicationHome home = new ApplicationHome(ImageServiceImpl.class);
@@ -43,6 +46,7 @@ public class ImageServiceImpl implements ImageService {
                 target.toPath(),
                 StandardCopyOption.REPLACE_EXISTING);
 
-        return externalUrl + ":" + port +  folderPath + "/" + file.getOriginalFilename();
+        // return externalUrl + ":" + port +  folderPath + "/" + file.getOriginalFilename();
+        return "/" + serviceName + folderPath + "/" + file.getOriginalFilename();
     }
 }

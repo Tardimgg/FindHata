@@ -1,4 +1,4 @@
-FROM eclipse-temurin
+FROM eclipse-temurin:20-jre-alpine
 WORKDIR /app
 COPY ./ ./
 

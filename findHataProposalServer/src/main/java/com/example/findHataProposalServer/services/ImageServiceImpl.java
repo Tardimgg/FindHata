@@ -52,6 +52,7 @@ public class ImageServiceImpl implements ImageService {
                 target.toPath(),
                 StandardCopyOption.REPLACE_EXISTING);
 
-        return externalUrl + "/" + serviceName + folderPath + "/" + file.getOriginalFilename();
+//        return externalUrl + "/" + serviceName + folderPath + "/" + file.getOriginalFilename();
+        return "/" + serviceName + folderPath + "/" + file.getOriginalFilename();
     }
 }

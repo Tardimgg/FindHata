@@ -6,10 +6,10 @@
     <h4>{{ proposal.price | currency: "₽": "₽": "0.0"}}</h4>
 
     <div class="w-full">
-      <swiper class=" card-img-top" [config]="config">
+      <swiper class=" card-img-top" [config]="config"  style="height: 27rem;">
         <ng-container *ngFor="let image of proposal.images; index as i">
           <ng-template swiperSlide class="items-center h-auto justify-center flex">
-            <img src="{{ image }}" style="height: 30rem; width: auto" alt="...">
+            <img src="{{ image }}" style="display: block; max-width: 100%; max-height: 100%;" alt="...">
           </ng-template>
         </ng-container>
       </swiper>
