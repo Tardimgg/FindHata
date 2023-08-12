@@ -37,7 +37,11 @@ export class ChatService {
     }
 
     this.rxStomp = new RxStomp();
-    let brokerURL = 'wss://' + document.location.host + "/api-chat/messenger/ws"
+    let protocol = "ws";
+    if (document.location.protocol.startsWith("https")) {
+      protocol = "wss";
+    }
+    let brokerURL = protocol + '://' + document.location.host + "/api-chat/messenger/ws"
     this.rxStomp.configure({
       // brokerURL: 'ws://localhost:8080/messenger/ws',
       brokerURL: brokerURL,
