@@ -1,0 +1,88 @@
+version: "3.9"
+
+services:
+
+  data-base:
+    build: ./findHataDataBase
+    environment:
+        - POSTGRES_PASSWORD=postgres
+    ports:
+        - "7777:5432"
+
+  discovery-server:
+    build: ./findHataServerDiscovery
+    ports:
+        - "8761:8761"
+
+  notification-server:
+    build: ./findHataNotificationServer
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+    depends_on:
+      - data-base
+      - discovery-server
+
+  gateway-server:
+    build: ./findHataGateway
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+    # ports:
+        # - "8080:80"
+    depends_on:
+      - discovery-server
+
+  messaging-server:
+    build: ./findHataMessagingServer
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+#     ports:
+#         - "8082:80"
+    depends_on:
+      - data-base
+      - discovery-server
+
+  proposal-server:
+    build: ./findHataProposalServer
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+        - externalUrl=http://127.0.0.1:8080
+        - externalUrlWithoutPort=http://127.0.0.1
+        - uploadServerPort=8081
+        - externalServiceName=proposals
+    # ports:
+        # - "8081:81"
+    depends_on:
+      - data-base
+      - discovery-server
+
+  auth-server:
+    build: ./findHataAuth
+    environment:
+        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+        - externalUrl=http://127.0.0.1:8080
+        - ngrokMode=true
+    depends_on:
+      - data-base
+      - discovery-server
+
+  frontend-server:
+    build: ./findHataFrontend
+    # ports:
+      # - "4200:4200"
+
+  ingress:
+    build: ./ingress
+    ports:
+      - "5000:80"
+    depends_on:
+      - gateway-server
+      - frontend-server
+
+  tunnel:
+    build: ./ngrok
+    ports:
+      - "4040:4040"
+    environment:
+        - NGROK_AUTHTOKEN
+    depends_on:
+      - ingress

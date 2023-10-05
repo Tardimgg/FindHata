@@ -1,0 +1,28 @@
+#!/bin/bash
+
+function build() {
+    path=$1;
+    cd $path;
+    if [ -d libs ]; then
+        new_deps=($(ls -d libs/*/));
+        for (( j=0; j<${#new_deps[@]}; j++ )); do
+            build ${new_deps[$j]};
+            cp ${new_deps[$j]}/build/libs/*.jar ./libs/
+
+        done
+    fi
+    echo $path;
+
+    ./gradlew shadowJar
+
+    cd ../../;
+
+}
+
+deps=($(ls -d libs/*/))
+
+for (( i=0; i<${#deps[@]}; i++ )); do
+    build ${deps[$i]}
+    cp ${deps[$i]}/build/libs/*.jar ./libs/
+done
+

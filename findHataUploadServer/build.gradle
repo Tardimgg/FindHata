@@ -30,6 +30,12 @@ tasks.named('test') {
 }
 
 
+tasks.register("shadowJar") {
+}
+
+tasks.findByName("shadowJar").dependsOn bootJar
+
+
 tasks.register("copyJar", Copy) {
 	from "$projectDir/build/libs/findHataUploadServer-0.0.1-SNAPSHOT.jar"
 	into layout.projectDirectory.dir("docker")
