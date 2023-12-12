@@ -2,6 +2,7 @@ import {Component, Input} from '@angular/core'
 import {ProposalService} from "../../services/proposal.service";
 import {ShortInfoProposal} from "../../entities/responses/get_all_proposals_response";
 import {SwiperOptions} from "swiper";
+import {Observable, Subscription} from "rxjs";
 
 @Component({
   selector: 'app-home',
@@ -11,9 +12,10 @@ import {SwiperOptions} from "swiper";
 export class HomeComponent {
 
   defaultInit() {
-    this.service.getAllProposals()
+    this.getInfoObserver = this.service.getAllProposals()
       .subscribe(response => {
         if (response.status == "ok") {
+          this.displayedSearchTitle = "Рекомендации для вас"
           this.proposals = response.proposals;
         }
       })
@@ -25,14 +27,20 @@ export class HomeComponent {
 
   proposals: ShortInfoProposal[];
   searchData: string;
+  displayedSearchTitle: string = "Рекомендации для вас";
+  getInfoObserver: Subscription;
 
   updateProposals() {
+    if (this.getInfoObserver != null) {
+      this.getInfoObserver.unsubscribe();
+    }
     if (this.searchData == null || this.searchData == "") {
       this.defaultInit();
     } else {
-      this.service.getAllProposalsWithKeyword(this.searchData)
+      this.getInfoObserver = this.service.getAllProposalsWithKeyword(this.searchData)
         .subscribe(response => {
           if (response.status == "ok") {
+            this.displayedSearchTitle = "Результаты поиска"
             this.proposals = response.proposals;
           }
         })

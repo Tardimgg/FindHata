@@ -23,6 +23,6 @@ deps=($(ls -d libs/*/))
 
 for (( i=0; i<${#deps[@]}; i++ )); do
     build ${deps[$i]}
-    cp ${deps[$i]}/build/libs/*.jar ./libs/
+    cp ${deps[$i]}build/libs/*.jar ./libs/
 done
 

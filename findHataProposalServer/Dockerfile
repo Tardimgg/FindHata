@@ -1,10 +1,10 @@
-FROM gradle:8.3-jdk20-alpine AS build
+FROM gradle:8.3-jdk20 AS build
 WORKDIR /app
 COPY ./ ./
 RUN ./build_dep && ./gradlew bootJar
 # RUN ./gradlew bootJar && cd findHataUploadServer && ./gradlew bootJar
 
-FROM eclipse-temurin:20-jre-alpine
+FROM eclipse-temurin:20-jre
 
 COPY --from=build /app/build/libs/*.jar findHataProposalServer-0.0.1-SNAPSHOT.jar
 COPY --from=build /app/libs/findHataUploadServer-0.0.1-SNAPSHOT.jar findHataUploadServer-0.0.1-SNAPSHOT.jar

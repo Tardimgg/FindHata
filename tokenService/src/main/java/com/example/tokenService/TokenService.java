@@ -21,8 +21,10 @@ import java.util.Map;
 
 public class TokenService {
 
+    // private final byte[] jwtSecret;
     private final String jwtSecret;
 
+    // public TokenService(byte[] jwtSecret) {
     public TokenService(String jwtSecret) {
         this.jwtSecret = jwtSecret;
     }

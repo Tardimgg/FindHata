@@ -6,7 +6,7 @@
     <h2 class="table-cell align-middle text-center text-4xl m-1"><span>FindHata</span></h2>
 
     <div class="input-group mt-2">
-      <input (keyup)="updateProposals()" [(ngModel)]="searchData" type="search" class="form-control rounded" placeholder="Поиск по объявлениям" aria-label="Search"
+      <input (keyup.enter)="updateProposals()" [(ngModel)]="searchData" type="search" class="form-control rounded" placeholder="Поиск по объявлениям" aria-label="Search"
              aria-describedby="search-addon"/>
       <button (click)="updateProposals()" type="button" class="btn btn-outline-primary">Искать!</button>
     </div>
@@ -17,7 +17,7 @@
 
 
 <div class="ml-20 mb-20">
-  <h2>Рекомендации для вас</h2>
+  <h2>{{displayedSearchTitle}}</h2>
   <div class="flex flex-row flex-wrap gap-16">
 
     <app-proposal *ngFor="let proposal of proposals" [proposal]="proposal"></app-proposal>

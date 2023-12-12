@@ -9,7 +9,7 @@
       <swiper class=" card-img-top" [config]="config"  style="height: 27rem;">
         <ng-container *ngFor="let image of proposal.images; index as i">
           <ng-template swiperSlide class="items-center h-auto justify-center flex">
-            <img src="{{ image }}" style="display: block; max-width: 100%; max-height: 100%;" alt="...">
+            <img height="27rem" src="{{ image }}" style="display: block; max-width: 100%; max-height: 100%;" alt="...">
           </ng-template>
         </ng-container>
       </swiper>

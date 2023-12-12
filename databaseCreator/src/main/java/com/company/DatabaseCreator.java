@@ -27,6 +27,7 @@ public class DatabaseCreator {
         Statement statement = null;
         try {
             log.debug("Creating database if not exist...");
+            DriverManager.setLoginTimeout(0);
             connection = DriverManager.getConnection(dbPath, dbUsername, dbPassword);
             statement = connection.createStatement();
             statement.executeQuery(new StringBuilder("SELECT count(*) FROM pg_database WHERE datname = ")

@@ -19,8 +19,8 @@ public class ImageServiceImpl implements ImageService {
     @Value("${spring.application.name}")
     String serviceName;
 
-    @Value("${externalUrl}")
-    String externalUrl;
+//    @Value("${externalUrl}")
+//    String externalUrl;
 
     @PostConstruct
     void init() {

@@ -49,11 +49,18 @@ services:
         - externalUrlWithoutPort=http://127.0.0.1
         - uploadServerPort=8081
         - externalServiceName=proposals
+        - vectorized_service_host=search-engine-server
+        - vectorized_service_post=80
     # ports:
         # - "8081:81"
     depends_on:
       - data-base
       - discovery-server
+
+  search-engine-server:
+    build: ./findHataSearchEngine
+    ports:
+        - "9000:80"
 
   auth-server:
     build: ./findHataAuth/docker

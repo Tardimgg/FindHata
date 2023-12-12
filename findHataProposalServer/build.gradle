@@ -1,4 +1,5 @@
 plugins {
+	id "com.google.protobuf" version "0.9.4"
 	id 'java'
 	id 'org.springframework.boot' version '3.0.6'
 	id 'io.spring.dependency-management' version '1.1.0'
@@ -24,6 +25,11 @@ ext {
 }
 
 dependencies {
+	runtimeOnly 'io.grpc:grpc-netty-shaded:1.59.1'
+	implementation 'io.grpc:grpc-protobuf:1.59.1'
+	implementation 'io.grpc:grpc-stub:1.59.1'
+	compileOnly 'org.apache.tomcat:annotations-api:6.0.53'
+
 	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -37,10 +43,11 @@ dependencies {
 
 	implementation 'org.springframework.boot:spring-boot-starter-validation:3.0.5'
 
-	implementation files('libs/tokenService-1.0-all.jar')
+//	implementation files('libs/tokenService-1.0-all.jar')
 	implementation files('libs/externalRequestFilter-1.0-all.jar')
 	implementation files('libs/databaseCreator-1.0-all.jar')
 }
+
 
 dependencyManagement {
 	imports {
@@ -58,3 +65,30 @@ tasks.register("copyJar", Copy) {
 }
 
 tasks.findByName("copyJar").dependsOn bootJar
+
+
+
+sourceSets {
+	main {
+		java {
+			srcDirs 'build/generated/source/proto/main/grpc'
+			srcDirs 'build/generated/source/proto/main/java'
+		}
+	}
+}
+
+protobuf {
+	protoc {
+		artifact = "com.google.protobuf:protoc:3.22.3"
+	}
+	plugins {
+		grpc {
+			artifact = 'io.grpc:protoc-gen-grpc-java:1.59.1'
+		}
+	}
+	generateProtoTasks {
+		all()*.plugins {
+			grpc {}
+		}
+	}
+}

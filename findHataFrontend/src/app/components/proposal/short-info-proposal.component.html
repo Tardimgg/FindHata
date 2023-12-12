@@ -34,9 +34,9 @@
 
 <!--  <img src="{{proposal.images[0]}}" class="card-img-top" alt="...">-->
   <div class="card-body">
-    <a routerLink="/proposal/{{ proposal.id }}" class="card-title">{{ proposal.title }}</a>
+    <a routerLink="/proposal/{{ proposal.id }}" class="card-title">{{ proposal.title | slice:0:30}}</a>
     <p class="card-text">{{ proposal.price | currency: "₽": "₽": "0.0"}}</p>
-    <p class="card-text">{{ proposal.location}}</p>
+    <p class="card-text">{{ proposal.location | slice:0:50}}</p>
   </div>
 </div>
 
