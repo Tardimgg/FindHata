@@ -11,7 +11,7 @@ import java.util.List;
 @Table(name = "proposals")
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProposalBD {
+public class ProposalDB {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

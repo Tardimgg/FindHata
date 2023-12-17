@@ -20,4 +20,9 @@ public class VectorRepImpl implements VectorRep {
     public DataVector findById(long id) {
         return map.get(id);
     }
+
+    @Override
+    public void remove(long id) {
+        map.remove(id);
+    }
 }

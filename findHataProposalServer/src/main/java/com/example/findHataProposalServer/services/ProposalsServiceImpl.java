@@ -17,6 +17,8 @@ import com.example.findHataProposalServer.repositories.VectorizedFactRep;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.transaction.Transactional;
+import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.system.ApplicationHome;
@@ -60,16 +62,20 @@ public class ProposalsServiceImpl implements ProposalsService {
 
     @PostConstruct
     void init() {
+        int k = 50;
         if (proposalRepository.findAll().size() != 0) {
+            kdbTree = new KDBTree(300, k, kdbTreeDBDriver, vectorRep, kdbTreeDBDriver.getRoot());
             return;
         }
-        kdbTree = new KDBTree(300, 50, kdbTreeDBDriver, vectorRep, null);
+        kdbTree = new KDBTree(300, k, kdbTreeDBDriver, vectorRep, null);
 
         ApplicationHome home = new ApplicationHome(ProposalsServiceImpl.class);
 
         ObjectMapper mapper = new ObjectMapper();
 
         String initPath = home.getDir().getAbsoluteFile() + "/init.json";
+//        String initPath = "./docker/init.json";
+//        String initPath = "./docker/prev_init.json";
         System.out.println("init path: " + initPath);
 
         File file = new File(initPath);
@@ -89,7 +95,7 @@ public class ProposalsServiceImpl implements ProposalsService {
                     imagePathRepository.save(imagePath);
                     paths.add(imagePath);
                 }
-                ProposalBD proposalBD = ProposalBD.builder()
+                ProposalDB proposalDB = ProposalDB.builder()
                         .location(proposal.getLocation())
                         .images(paths)
                         .title(proposal.getTitle())
@@ -98,9 +104,9 @@ public class ProposalsServiceImpl implements ProposalsService {
                         .price(proposal.getPrice())
                         .build();
 
-                proposalRepository.save(proposalBD);
+                proposalRepository.save(proposalDB);
                 try {
-                    saveVectorInfo(proposalBD);
+                    saveVectorInfo(proposalDB);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -111,7 +117,8 @@ public class ProposalsServiceImpl implements ProposalsService {
         }
     }
 
-    private void saveVectorInfo(ProposalBD proposal) {
+    @Transactional
+    private void saveVectorInfo(ProposalDB proposal) {
         Profile.Proposal proposalRequest = Profile.Proposal.newBuilder()
                 .setTitle(proposal.getTitle())
                 .setDescription(proposal.getDescription())
@@ -129,7 +136,7 @@ public class ProposalsServiceImpl implements ProposalsService {
             VectorizedFact vectorizedFact = vectorizedFactRep.findById(kdbVecId).orElse(null);
 
             ReverseProposalFactIndex index = ReverseProposalFactIndex.builder()
-                    .proposalBD(proposal)
+                    .proposalDB(proposal)
                     .vectorizedFact(vectorizedFact)
                     .build();
 
@@ -138,6 +145,7 @@ public class ProposalsServiceImpl implements ProposalsService {
     }
 
     @Override
+    @Transactional
     public void addProposal(List<Role> roles, Proposal proposal) throws NoRightException {
 
         if (roles.contains(Role.USER) || roles.contains(Role.ADMIN) || roles.contains(Role.OTHER_SERVICE)) {
@@ -152,7 +160,7 @@ public class ProposalsServiceImpl implements ProposalsService {
                 images.add(res);
             }
 
-            ProposalBD proposalBD = proposalRepository.save(ProposalBD.builder()
+            ProposalDB proposalDB = proposalRepository.save(ProposalDB.builder()
                     .title(proposal.getTitle())
                     .description(proposal.getDescription())
                     .location(proposal.getLocation())
@@ -161,7 +169,7 @@ public class ProposalsServiceImpl implements ProposalsService {
                     .images(images)
                     .build()
             );
-            saveVectorInfo(proposalBD);
+            saveVectorInfo(proposalDB);
 
 
         } else {
@@ -171,7 +179,7 @@ public class ProposalsServiceImpl implements ProposalsService {
 
     @Override
     public ProposalResponse getInfoAboutProposal(Integer proposalId) throws NoFoundProposalException {
-        Optional<ProposalBD> proposalBD = proposalRepository.findById(proposalId);
+        Optional<ProposalDB> proposalBD = proposalRepository.findById(proposalId);
 
         if (proposalBD.isPresent()) {
             return ProposalResponse.fromBD(proposalBD.get());
@@ -180,7 +188,7 @@ public class ProposalsServiceImpl implements ProposalsService {
         throw new NoFoundProposalException("proposal not found");
     }
 
-    private List<ShortInfoProposal> convertToShortProposal(List<ProposalBD> list) {
+    private List<ShortInfoProposal> convertToShortProposal(List<ProposalDB> list) {
         return list.stream().map((v) -> ShortInfoProposal.builder()
                 .id(v.getId())
                 .location(v.getLocation())
@@ -192,7 +200,7 @@ public class ProposalsServiceImpl implements ProposalsService {
 
     @Override
     public List<ShortInfoProposal> getAll() {
-        List<ProposalBD> proposals = proposalRepository.findAll();
+        List<ProposalDB> proposals = proposalRepository.findAll();
 
         return convertToShortProposal(proposals);
 
@@ -205,30 +213,48 @@ public class ProposalsServiceImpl implements ProposalsService {
         Arrays.fill(delta, 0.5);
     }
 
+    double cosSimilarity(double[] f, double[] s) {
+        double mult = 0;
+        double f_normal = 0;
+        double s_normal = 0;
+        for (int i = 0; i < f.length; i++) {
+            mult += f[i] * s[i];
+            f_normal += Math.pow(f[i], 2);
+            s_normal += Math.pow(s[i], 2);
+        }
+        f_normal = Math.sqrt(f_normal);
+        s_normal = Math.sqrt(s_normal);
+        return (Math.abs(mult) / f_normal) / s_normal;
+    }
+
     public List<ShortInfoProposal> getAllWithKeywordKDBTreeImpl(String keyword) {
                 Profile.Request request = Profile.Request.newBuilder().setRequest(keyword).build();
         var ansIter = vecClient.blockingStub.vectorizeRequest(request);
 
 
-        Set<Integer> ansIds = new HashSet<>();
+        Map<Integer, Double> ansIds = new HashMap<>();
         while (ansIter.hasNext()) {
             Profile.TextVector vec = ansIter.next();
 
             long time = System.currentTimeMillis();
-            List<Long> ids = kdbTree.find(vec.getVectorList().stream().mapToDouble(Double::doubleValue).toArray(),
-                    delta);
+            double[] vectorizedKeyword = vec.getVectorList().stream().mapToDouble(Double::doubleValue).toArray();
+            List<Long> ids = kdbTree.find(vectorizedKeyword, delta);
             long newTime = System.currentTimeMillis();
             System.out.println(newTime - time);
 
             for (Long id: ids) {
                 var vecFact = vectorizedFactRep.findById(id).orElse(null);
                 for (ReverseProposalFactIndex index : reverseProposalFactIndexRep.findAllByVectorizedFact(vecFact)) {
-                    ansIds.add(index.getProposalBD().getId());
+                    ansIds.merge(index.getProposalDB().getId(),
+                            cosSimilarity(vectorizedKeyword, vecFact.getVector()),
+                            Math::max);
                 }
             }
 
         }
-        return convertToShortProposal(proposalRepository.findAllById(ansIds));
+        List<ProposalDB> proposal = proposalRepository.findAllById(ansIds.keySet());
+        proposal.sort(Comparator.comparingDouble((ProposalDB v) -> ansIds.get(v.getId())).reversed());
+        return convertToShortProposal(proposal);
     }
 
 
@@ -239,8 +265,8 @@ public class ProposalsServiceImpl implements ProposalsService {
 
     public List<ShortInfoProposal> getAllWithKeywordKMP(String keyword) {
         String keywordFinal = keyword.toLowerCase();
-        List<ProposalBD> proposals = proposalRepository.findAll(
-                (Specification<ProposalBD>) (root, query, criteriaBuilder) -> {
+        List<ProposalDB> proposals = proposalRepository.findAll(
+                (Specification<ProposalDB>) (root, query, criteriaBuilder) -> {
 
             Predicate predicate1 = criteriaBuilder.like(criteriaBuilder.lower(
                     root.get("title")), "%" + keywordFinal + "%");
@@ -264,17 +290,32 @@ public class ProposalsServiceImpl implements ProposalsService {
         return convertToShortProposal(proposals);
     }
 
+    public void removeProposalImpl(ProposalDB proposal) {
+        List<ReverseProposalFactIndex> facts = reverseProposalFactIndexRep.findAllByProposalDB(proposal);
+        for (ReverseProposalFactIndex reverseFact : facts) {
+            List<ReverseProposalFactIndex> f = reverseProposalFactIndexRep
+                    .findAllByVectorizedFact(reverseFact.getVectorizedFact());
+
+            if (f.size() > 1) {
+                reverseProposalFactIndexRep.delete(reverseFact);
+            } else if (f.size() == 1){
+                reverseProposalFactIndexRep.delete(reverseFact);
+                kdbTree.remove(reverseFact.getVectorizedFact().getId());
+            }
+        }
+        proposalRepository.delete(proposal);
+    }
+
     @Override
+    @Transactional
     public void removeProposal(int proposalId, int userId) throws NoFoundProposalException, NoRightException {
-        Optional<ProposalBD> proposalBD = proposalRepository.findById(proposalId);
+        Optional<ProposalDB> proposalBD = proposalRepository.findById(proposalId);
 
         if (proposalBD.isPresent()) {
             if (proposalBD.get().getOwnerId() != userId) {
                 throw new NoRightException("The user does not have the right to delete the proposal");
             }
-
-            System.out.println("!!! the 'delete proposal' function is not implemented when using the kdb tree");
-            proposalRepository.delete(proposalBD.get());
+            removeProposalImpl(proposalBD.get());
         } else {
             throw new NoFoundProposalException("proposal not found");
         }
@@ -282,13 +323,13 @@ public class ProposalsServiceImpl implements ProposalsService {
     }
 
     @Override
+    @Transactional
     public void removeProposal(List<Role> roles, int proposalId) throws NoRightException, NoFoundProposalException {
         if (roles.contains(Role.ADMIN) || roles.contains(Role.OTHER_SERVICE)) {
-            Optional<ProposalBD> proposalBD = proposalRepository.findById(proposalId);
+            Optional<ProposalDB> proposalBD = proposalRepository.findById(proposalId);
 
             if (proposalBD.isPresent()) {
-                System.out.println("!!! the 'delete proposal' function is not implemented when using the kdb tree");
-                proposalRepository.delete(proposalBD.get());
+                removeProposalImpl(proposalBD.get());
             } else {
                 throw new NoFoundProposalException("proposal not found");
             }
@@ -300,14 +341,14 @@ public class ProposalsServiceImpl implements ProposalsService {
     @Override
     public void changeProposal(int proposalId, int userId, ChangeProposalRequest changes)
             throws NoFoundProposalException, NoRightException {
-        Optional<ProposalBD> proposalBD = proposalRepository.findById(proposalId);
+        Optional<ProposalDB> proposalBD = proposalRepository.findById(proposalId);
 
         if (proposalBD.isPresent()) {
             if (proposalBD.get().getOwnerId() != userId) {
                 throw new NoRightException("The user does not have the right to change the proposal");
             }
 
-            ProposalBD proposal = proposalBD.get();
+            ProposalDB proposal = proposalBD.get();
 
             changes.apply(proposal);
             proposalRepository.save(proposal);
@@ -320,11 +361,11 @@ public class ProposalsServiceImpl implements ProposalsService {
     public void changeProposal(List<Role> roles, int proposalId, ChangeProposalRequest changes)
             throws NoFoundProposalException, NoRightException {
         if (roles.contains(Role.ADMIN) || roles.contains(Role.OTHER_SERVICE)) {
-            Optional<ProposalBD> proposalBD = proposalRepository.findById(proposalId);
+            Optional<ProposalDB> proposalBD = proposalRepository.findById(proposalId);
 
             if (proposalBD.isPresent()) {
 
-                ProposalBD proposal = proposalBD.get();
+                ProposalDB proposal = proposalBD.get();
 
                 changes.apply(proposal);
                 proposalRepository.save(proposal);
@@ -336,4 +377,5 @@ public class ProposalsServiceImpl implements ProposalsService {
             throw new NoRightException("The user does not have the right to change the proposal");
         }
     }
+
 }

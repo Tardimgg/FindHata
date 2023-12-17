@@ -226,7 +226,45 @@ class KDBTreeTest {
                 new double[]{0.5, 0.5, 0.5});
         res.sort(Long::compare);
         assertEquals(List.of(id, id2, id3), res);
+
+        tree.remove(id);
+        tree.remove(id2);
+        tree.remove(id3);
+
+
     }
 
+    @Test
+    void testFindIndex() {
+        KDBTree tree = new KDBTree(3, 10, null, null, null);
+
+        double[] data = new double[]{1.0, 1.0, 1.0};
+        assertEquals(0, tree.findLeftBorder(data, data.length, 1.0));
+        assertEquals(2, tree.findRightBorder(data, data.length, 1.0));
+        assertEquals(0, tree.findLeftBorder(data, data.length, 0.8));
+        assertEquals(0, tree.findRightBorder(data, data.length, 0.8));
+
+        data = new double[]{1.0, 1.2, 1.3};
+        assertEquals(2, tree.findLeftBorder(data, data.length, 1.3));
+        assertEquals(2, tree.findRightBorder(data, data.length, 1.3));
+        assertEquals(3, tree.findLeftBorder(data, data.length, 1.31));
+        assertEquals(3, tree.findRightBorder(data, data.length, 1.31));
+
+        data = new double[]{0, 1.0, 1.0, 1.0, 1.2};
+        assertEquals(1, tree.findLeftBorder(data, data.length, 1.0));
+        assertEquals(3, tree.findRightBorder(data, data.length, 1.0));
+        assertEquals(1, tree.findLeftBorder(data, data.length, 0.9));
+        assertEquals(1, tree.findRightBorder(data, data.length, 0.9));
+        assertEquals(4, tree.findLeftBorder(data, data.length, 1.1));
+        assertEquals(4, tree.findRightBorder(data, data.length, 1.1));
+
+        data = new double[]{-1.1, 0.5, 1.0, 1.0, 1.2};
+        assertEquals(1, tree.findLeftBorder(data, data.length, 0.3));
+        assertEquals(1, tree.findRightBorder(data, data.length, 0.3));
+
+        data = new double[]{-1.1};
+        assertEquals(0, tree.findLeftBorder(data, data.length, -1.1));
+        assertEquals(0, tree.findRightBorder(data, data.length, -1.1));
+    }
 
 }

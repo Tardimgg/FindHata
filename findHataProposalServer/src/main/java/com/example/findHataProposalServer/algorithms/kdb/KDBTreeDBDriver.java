@@ -8,6 +8,10 @@ public interface KDBTreeDBDriver {
 
     long saveNode(KDBNode node);
 
+    void updateRoot(KDBNode newRoot);
+    KDBNode getRoot();
+    void forgetRoot();
+
     long update(KDBNode node);
 
     void removeNode(KDBNode node);

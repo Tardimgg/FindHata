@@ -1,7 +1,6 @@
 package com.example.findHataProposalServer.entities.requests;
 
-import com.example.findHataProposalServer.entities.ProposalBD;
-import jakarta.validation.constraints.NotNull;
+import com.example.findHataProposalServer.entities.ProposalDB;
 import lombok.Data;
 
 @Data
@@ -15,21 +14,21 @@ public class ChangeProposalRequest {
 
     Integer newPrice;
 
-    public void apply(ProposalBD proposalBD) {
+    public void apply(ProposalDB proposalDB) {
         if (newTitle != null) {
-            proposalBD.setTitle(newTitle);
+            proposalDB.setTitle(newTitle);
         }
 
         if (newDescription != null) {
-            proposalBD.setDescription(newDescription);
+            proposalDB.setDescription(newDescription);
         }
 
         if (newLocation != null) {
-            proposalBD.setLocation(newLocation);
+            proposalDB.setLocation(newLocation);
         }
 
         if (newPrice != null) {
-            proposalBD.setPrice(newPrice);
+            proposalDB.setPrice(newPrice);
         }
     }
 }

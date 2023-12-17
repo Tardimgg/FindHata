@@ -3,10 +3,7 @@ package com.example.findHataProposalServer.algorithms.kdb;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class KDBTree {
 
@@ -16,7 +13,6 @@ public class KDBTree {
     private VectorRep vectorRep;
 
     private int k = 3;
-
 
     public KDBTree(int nodeSize, int k, KDBTreeDBDriver dbDriver, VectorRep vectorRep, KDBNode root) {
         this.k = k;
@@ -52,8 +48,8 @@ public class KDBTree {
                 .build();
     }
 
-    NewNode splitNode(KDBNode node) {
-        double splitter = node.getVals()[k - 1];
+    NewNode naiveSplitNode(KDBNode node) {
+        double splitter = node.getVals()[k - 1]; // тут проблема !!!!!!! элемент справа не всегда больше !!!!!
 
         KDBNode lNode = copyFrom(node, 0, k - (!node.isLeaf() ? 1 : 0), k);
         KDBNode rNode = copyFrom(node, k, k - 1, k - (node.isLeaf() ? 1 : 0));
@@ -61,6 +57,7 @@ public class KDBTree {
         return NewNode.builder()
                 .left(lNode)
                 .right(rNode)
+                .splitterIndex(node.getSplittingIndex())
                 .splitter(splitter)
                 .build();
     }
@@ -70,6 +67,7 @@ public class KDBTree {
                 .vectorOrNodesIds(new long[2 * k - (node.isLeaf() ? 1 : 0)])
                 .vals(new double[2 * k - 1])
                 .splittingIndex(node.getSplittingIndex())
+//                .splittingIndex(splitterIndex)
                 .isLeaf(node.isLeaf())
                 .valsLen(0)
                 .vecOrNodesLen(0)
@@ -139,17 +137,76 @@ public class KDBTree {
         }
     }
 
+    double mid(double f, double s) {
+        return f + ((s - f) / 2);
+    }
+
+    Optional<Double> findMedian(KDBNode node, int splittingIndex) {
+        double[] baseVector = new double[vectorSize];
+        double[] delta = new double[vectorSize];
+        Arrays.fill(delta, 2);
+        double l = -1.1;
+        double r = 1.1;
+        while (l + 0.00000000001 < r) {
+            double mid = mid(l, r);
+
+            baseVector[splittingIndex] = mid(-1.1, mid);
+            delta[splittingIndex] = mid - baseVector[splittingIndex];
+
+            Quantity quantity = countNumber(node, baseVector, delta);
+            long onLeft = quantity.counter;
+            long onRight = quantity.all - onLeft;
+
+            baseVector[splittingIndex] = 0;
+            delta[splittingIndex] = 2;
+
+            if (Math.abs(onRight - onLeft) <= 1) {
+                return Optional.of(mid);
+            }
+            if (onLeft < onRight) {
+                l = mid;
+            } else {
+                r = mid;
+            }
+        }
+        return Optional.empty();
+    }
+
+    // adapter will not be saved
+    Optional<NewNode> splitNodeBySplitter(KDBNode node, int splitterIndex) {
+        Double median = findMedian(node, splitterIndex).orElse(null);
+        if (median != null) {
+            NewNode res = splitNodeHierarchyBySplitter(node.getId(), splitterIndex, median);
+            return Optional.of(res);
+        }
+        return Optional.empty();
+    }
+
+    // adapter will not be saved
+    NewNode splitNode(KDBNode node) {
+        int curSplitterIndex = (node.getSplittingIndex() + 1) % vectorSize;
+        do {
+            NewNode res = splitNodeBySplitter(node, curSplitterIndex).orElse(null);
+            if (res != null) {
+                return res;
+            }
+            curSplitterIndex++;
+            curSplitterIndex %= vectorSize;
+        } while (curSplitterIndex != node.getSplittingIndex() + 1);
+
+        throw new RuntimeException(":(");
+    }
+
 	KDBNode normalizeNode(KDBNode node) {
 		if (node.getValsLen() == 2 * k - 1) {
-			NewNode res = splitNode(node);
-			KDBNode adapter = generateAdapter(res.splitter,
-				dbDriver.saveNode(res.left),
-				dbDriver.saveNode(res.right),
-				res.left.getSplittingIndex()
-			);
-
-			dbDriver.removeNode(node);
-			node = adapter;
+            NewNode res = splitNode(node);
+            KDBNode adapter = generateAdapter(res.splitter,
+                    res.left.getId(),
+                    res.right.getId(),
+                    res.splitterIndex
+            );
+            adapter.setId(dbDriver.saveNode(adapter));
+            return adapter;
 		}
 		return node;
 	}
@@ -196,25 +253,40 @@ public class KDBTree {
         node = dbDriver.getNode(nodeId); // for gc
         dbDriver.removeNode(node);
 
-
-	
         var builder = NewNode.builder()
+                .splitterIndex(splitterIndex)
                 .splitter(splitter);
         if (lNode.getValsLen() > 0) {
-			lNode = normalizeNode(lNode);
             lNode.setId(dbDriver.saveNode(lNode));
+			lNode = normalizeNode(lNode);
             builder.left(lNode);
 
         }
         if (rNode.getValsLen() > 0) {
-			rNode = normalizeNode(rNode);
             rNode.setId(dbDriver.saveNode(rNode));
+			rNode = normalizeNode(rNode);
             builder.right(rNode);
         }
         return builder.build();
     }
 
-    int findIndex(double[] data, int len, double val) {
+    int findLeftBorder(double[] data, int len, double val) {
+        int l = -1;
+        int r = len;
+
+        while (l + 1 < r) {
+            int mid = l + ((r - l) >> 1);
+
+            if (data[mid] < val) {
+                l = mid;
+            } else {
+                r = mid;
+            }
+        }
+        return r;
+    }
+
+    int findRightBorder(double[] data, int len, double val) {
         int l = 0;
         int r = len;
 
@@ -223,12 +295,10 @@ public class KDBTree {
 
             if (data[mid] <= val) {
                 l = mid;
-
-            } else if (data[mid] > val) {
+            } else {
                 r = mid;
             }
         }
-
         if (data[l] < val) {
             return Integer.min(r, l + 1);
         }
@@ -236,7 +306,7 @@ public class KDBTree {
     }
 
 
-    KDBNode generateAdapter(double splitter, long leftId, long rightId, int splittingIndex) {
+    KDBNode generateAdapter(double splitter, long leftId, long rightId, int splitterIndex) {
         double[] vals = new double[2 * k - 1];
         vals[0] = splitter;
 
@@ -250,7 +320,7 @@ public class KDBTree {
                 .valsLen(1)
                 .vectorOrNodesIds(vecOrNodes)
                 .vecOrNodesLen(2)
-                .splittingIndex(splittingIndex)
+                .splittingIndex(splitterIndex)
                 .build();
     }
 
@@ -266,19 +336,34 @@ public class KDBTree {
         }
     }
 
+    private static void leftShift(long[] arr, int from, int to) {
+        for (int i = from - 1; i < to; i++) {
+            arr[i] = arr[i + 1];
+        }
+    }
+
+    private static void leftShift(double[] arr, int from, int to) {
+        for (int i = from - 1; i < to; i++) {
+            arr[i] = arr[i + 1];
+        }
+    }
+
 
     private InsertResp insert(long currentNodeId, double[] vector) {
         KDBNode currentNode = dbDriver.getNode(currentNodeId);
         double vectorVal = vector[currentNode.getSplittingIndex()];
 
-        int index = findIndex(currentNode.getVals(), currentNode.getValsLen(), vectorVal);
+
+        int index = findLeftBorder(currentNode.getVals(), currentNode.getValsLen(), vectorVal);
 
         if (currentNode.isLeaf()) {
-            if (index < currentNode.getValsLen()) {
+            while (index < currentNode.getValsLen() &&
+                    vector[currentNode.getSplittingIndex()] == currentNode.getVals()[index]) {
                 DataVector vec = vectorRep.findById(currentNode.getVectorOrNodesIds()[index]);
                 if (Arrays.equals(vec.getVector(), vector)) {
                     return new InsertResp(vec.getId(), false);
                 }
+                index++;
             }
 
             rightShift(currentNode.getVals(), index, currentNode.getValsLen());
@@ -302,108 +387,28 @@ public class KDBTree {
             currentNode = dbDriver.getNode(currentNodeId); // update node
             if (resp.filled) {
 
-                double[] borders = currentNode.getVals();
-                double midBorder;
-                if (index == 0) {
-                    Random random = new Random();
-
-                    double minVal;
-                    if (borders[0] > 0) {
-                        minVal = -0.1;
-                    } else if (borders[0] > -0.4) {
-                        minVal = -0.5;
-                    } else {
-                        minVal = 1;
-                    }
-
-                    midBorder = minVal + random.nextDouble() * (borders[0] - minVal);
-                    midBorder = Double.max(midBorder, minVal + 0.001);
-//                    if (currentNode.getValsLen() == 1) {
-//                        midBorder = borders[0] - Double.max(borders[0] / 2, 0.05);
-//                    } else {
-//                        midBorder = borders[0] - ((borders[1] - borders[0]) / 2);
-//                    }
-                } else if (index == currentNode.getValsLen()) {
-                    Random random = new Random();
-
-                    double maxVal;
-                    if (borders[index - 1] < 0) {
-                        maxVal = 0.1;
-                    }
-                    else if (borders[index - 1] < 0.4) {
-                        maxVal = 0.5;
-                    } else {
-                        maxVal = 1;
-                    }
-
-                    midBorder = borders[index - 1] + Double.min(0.001,
-                            random.nextDouble() * (maxVal - borders[index - 1]));
-                    midBorder = Double.min(midBorder, maxVal - 0.001);
-//                    if (index == 1) {
-//                        midBorder = borders[index - 1] + Double.max(borders[index - 1] / 2, 0.05);
-//                    } else {
-//                        midBorder = borders[index - 1] + ((borders[index - 1] - border0s[index - 2]) / 2);
-//                    }
-                } else {
-                    midBorder = borders[index - 1] / 2 + ((borders[index] - borders[index - 1]) / 2);
-                }
-
-                NewNode newNode = splitNodeHierarchyBySplitter(child.getId(),
-                        currentNode.getSplittingIndex(), midBorder);
-
+                NewNode newNode = splitNodeBySplitter(child, currentNode.getSplittingIndex()).orElse(null);
                 currentNode = dbDriver.getNode(currentNodeId); // for gc
-
-                try{
+                if (newNode == null) {
+                    NewNode res = splitNode(child);
+                    KDBNode adapter = generateAdapter(res.splitter,
+                            res.left.getId(),
+                            res.right.getId(),
+                            res.splitterIndex);
+                    currentNode.getVectorOrNodesIds()[index] = dbDriver.saveNode(adapter);
+                } else {
                     rightShift(currentNode.getVals(), index, currentNode.getValsLen());
-                } catch (Exception e) {
-                    System.out.println(currentNode.isLeaf());
-                    e.printStackTrace();
-                    throw e;
-                }
-                currentNode.setValsLen(currentNode.getValsLen() + 1);
-                currentNode.getVals()[index] = midBorder;
+                    currentNode.setValsLen(currentNode.getValsLen() + 1);
+                    currentNode.getVals()[index] = newNode.splitter;
 
-                rightShift(currentNode.getVectorOrNodesIds(), index, currentNode.getVecOrNodesLen());
-                currentNode.setVecOrNodesLen(currentNode.getVecOrNodesLen() + 1);
+                    rightShift(currentNode.getVectorOrNodesIds(), index, currentNode.getVecOrNodesLen());
+                    currentNode.setVecOrNodesLen(currentNode.getVecOrNodesLen() + 1);
 
-                if (newNode.left == null) {
-                    KDBNode emptyLeaf = KDBNode.emptyLeaf(k,
-                            (currentNode.getSplittingIndex() + 1) % vectorSize);
-                    currentNode.getVectorOrNodesIds()[index] = dbDriver.saveNode(emptyLeaf);
 
-                } if (newNode.right == null) {
-                    KDBNode emptyLeaf = KDBNode.emptyLeaf(k,
-                            (currentNode.getSplittingIndex() + 1) % vectorSize);
-                    currentNode.getVectorOrNodesIds()[index + 1] = dbDriver.saveNode(emptyLeaf);
+                    currentNode.getVectorOrNodesIds()[index] = newNode.left.getId();
+                    currentNode.getVectorOrNodesIds()[index + 1] = newNode.right.getId();
                 }
-                if (newNode.left != null) {
-                    if (newNode.left.getValsLen() == 2 * k - 1) {
-                        System.out.println("!!! node unexpectedly overflowed !!!");
-                        NewNode res = splitNode(newNode.left);
-                        KDBNode adapter = generateAdapter(res.splitter,
-                                dbDriver.saveNode(res.left),
-                                dbDriver.saveNode(res.right),
-                                res.left.getSplittingIndex());
-                        currentNode.getVectorOrNodesIds()[index] = dbDriver.saveNode(adapter);
-                        dbDriver.removeNode(newNode.left);
-                    } else {
-                        currentNode.getVectorOrNodesIds()[index] = newNode.left.getId();
-                    }
-                }
-                if (newNode.right != null) {
-                    if (newNode.right.getValsLen() == 2 * k - 1) {
-						System.out.println("!!! node unexpectedly overflowed !!!");
-                        NewNode res = splitNode(newNode.right);
-                        KDBNode adapter = generateAdapter(res.splitter,
-                                dbDriver.saveNode(res.left),
-                                dbDriver.saveNode(res.right),
-                                res.left.getSplittingIndex());
-                        currentNode.getVectorOrNodesIds()[index + 1] = dbDriver.saveNode(adapter);
-                        dbDriver.removeNode(newNode.right);
-                    } else {
-                        currentNode.getVectorOrNodesIds()[index + 1] = newNode.right.getId();
-                    }
-                }
+
                 dbDriver.update(currentNode);
 
                 return new InsertResp(resp.vectorId, currentNode.getValsLen() == k * 2 - 1);
@@ -411,6 +416,7 @@ public class KDBTree {
             return new InsertResp(resp.vectorId, false);
         }
     }
+
 
     public long insert(double[] vector) {
         if (root == null) {
@@ -431,6 +437,7 @@ public class KDBTree {
                     .build();
 
             root.setId(dbDriver.saveNode(root));
+            dbDriver.updateRoot(root);
             return vectorId;
         } else {
             InsertResp resp = insert(root.getId(), vector);
@@ -439,44 +446,25 @@ public class KDBTree {
                 int splittingIndex = normalize((root.getSplittingIndex() - 1) % vectorSize, vectorSize);
                 int count = 0;
                 while (true) {
-                    Random random = new Random();
-                     double splitter = random.nextDouble() - 0.5;
-                    if (count > 10 * vectorSize) {
+                    if (count > vectorSize) {
                         throw new RuntimeException("infinite loop");
                     }
-                    if (count > vectorSize) {
-                         splitter = random.nextDouble() * 2 - 1;
-                    }
-                    NewNode newRoot = splitNodeHierarchyBySplitter(root.getId(),
-                            splittingIndex, splitter);
-
-                    if (newRoot.left == null || newRoot.right == null) {
+                    Double splitter = findMedian(root, splittingIndex).orElse(null);
+                    if (splitter == null) {
                         splittingIndex--;
                         splittingIndex = normalize(splittingIndex, vectorSize);
-
-                        if (newRoot.left == null) {
-                            root = newRoot.right;
-                        } else {
-                            root = newRoot.left;
-                        }
                     } else {
+                        dbDriver.forgetRoot();
+                        NewNode newRoot = splitNodeHierarchyBySplitter(root.getId(),
+                                splittingIndex, splitter);
 
-                        double[] vals = new double[2 * k - 1];
-                        vals[0] = splitter;
-                        long[] vectorIds = new long[2 * k];
-                        vectorIds[0] = newRoot.left.getId();
-                        vectorIds[1] = newRoot.right.getId();
-
-                        root = KDBNode.builder()
-                                .isLeaf(false)
-                                .splittingIndex(splittingIndex)
-                                .vals(vals)
-                                .vectorOrNodesIds(vectorIds)
-                                .valsLen(1)
-                                .vecOrNodesLen(2)
-                                .build();
+                        root = generateAdapter(splitter,
+                                newRoot.left.getId(),
+                                newRoot.right.getId(),
+                                splittingIndex);
 
                         root.setId(dbDriver.saveNode(root));
+                        dbDriver.updateRoot(root);
                         return resp.vectorId;
                     }
                     count++;
@@ -493,49 +481,161 @@ public class KDBTree {
         return i;
     }
 
-    private List<Long> find(long currentNodeId, double[] baseVector, double[] deltaVector) {
-        KDBNode currentNode = dbDriver.getNode(currentNodeId);
-        int splittingIndex = currentNode.getSplittingIndex();
+    private Segment findSegmentToSearch(KDBNode node, double[] baseVector, double[] deltaVector) {
+        int splittingIndex = node.getSplittingIndex();
 
         double minVal = baseVector[splittingIndex] - deltaVector[splittingIndex];
-        int minIndex = findIndex(currentNode.getVals(), currentNode.getValsLen(), minVal);
+        int minIndex = findLeftBorder(node.getVals(), node.getValsLen(), minVal);
 
         double maxVal = baseVector[splittingIndex] + deltaVector[splittingIndex];
-        int maxIndex = findIndex(currentNode.getVals(), currentNode.getValsLen(), maxVal);
+        int maxIndex = findRightBorder(node.getVals(), node.getValsLen(), maxVal);
+        return new Segment(minIndex, maxIndex);
+    }
 
-        List<Long> ans = new ArrayList<>();
+
+    private List<KDBNode> findLeaves(long currentNodeId, double[] baseVector, double[] deltaVector) {
+        KDBNode currentNode = dbDriver.getNode(currentNodeId);
+
+        List<KDBNode> ans = new ArrayList<>();
         if (currentNode.isLeaf() && currentNode.getVecOrNodesLen() != 0) {
-
-            for (int i = minIndex; i <= Integer.min(maxIndex, currentNode.getVecOrNodesLen() - 1); i++) {
-
-                DataVector vec = vectorRep.findById(currentNode.getVectorOrNodesIds()[i]);
-                boolean fits = true;
-                for (int j = 0; j < baseVector.length; j++) {
-                    double vecVal = vec.getVector()[j];
-                    if (vecVal < baseVector[j] - deltaVector[j] || vecVal > baseVector[j] + deltaVector[j]) {
-                        fits = false;
-                        break;
-                    }
-                }
-                if (fits) {
-                    ans.add(currentNode.getVectorOrNodesIds()[i]);
-                }
-            }
+            ans.add(currentNode);
         } else if (currentNode.getVecOrNodesLen() != 0){
+            Segment segment = findSegmentToSearch(currentNode, baseVector, deltaVector);
+            int minIndex = segment.l;
+            int maxIndex = segment.r;
             for (int i = minIndex; i <= maxIndex; i++) {
-                ans.addAll(find(currentNode.getVectorOrNodesIds()[i], baseVector, deltaVector));
+                ans.addAll(findLeaves(currentNode.getVectorOrNodesIds()[i], baseVector, deltaVector));
                 currentNode = dbDriver.getNode(currentNodeId); // for gc
             }
         }
         return ans;
     }
 
-    public List<Long> find(double[] baseVector, double[] deltaVector) {
+    boolean traceRoute(KDBNode cur, long id) {
+        if (cur.isLeaf()) {
+            for (long next: cur.getVectorOrNodesIds()) {
+                if (next == id) {
+                    return true;
+                }
+            }
+        } else {
+            for (int i = 0; i < cur.getVecOrNodesLen(); i++) {
+                long next = cur.getVectorOrNodesIds()[i];
+                if (traceRoute(dbDriver.getNode(next), id)) {
+                    double lessThan = Double.MIN_VALUE;
+                    if (i != 0) {
+                        lessThan = cur.getVals()[i - 1];
+                    }
+
+                    double moreThan = Double.MAX_VALUE;
+                    if (i < cur.getValsLen()) {
+                        moreThan = cur.getVals()[i];
+                    }
+                    double[] forPrint = vectorRep.findById(id).getVector();
+                    System.out.println(lessThan + " < " + forPrint[cur.getSplittingIndex()]
+                            + " < " + moreThan + " :" + cur.getSplittingIndex() + " : id=" + i);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
+    public boolean remove(long id) {
         if (root != null) {
-            return find(root.getId(), baseVector, deltaVector);
+            double[] delta = new double[vectorSize];
+            double[] baseVector = vectorRep.findById(id).getVector();
+            List<KDBNode> leaves = findLeaves(root.getId(), baseVector, delta);
+            for (KDBNode leaf : leaves) {
+                Segment segment = findSegmentToSearch(leaf, baseVector, delta);
+                int minIndex = segment.l;
+                while (minIndex < leaf.getVecOrNodesLen() &&
+                        Math.abs(baseVector[leaf.getSplittingIndex()] - leaf.getVals()[minIndex]) <= delta[0]) {
+                    if (leaf.getVectorOrNodesIds()[minIndex] == id) {
+                        vectorRep.remove(leaf.getVectorOrNodesIds()[minIndex]);
+                        leftShift(leaf.getVals(), minIndex + 1, leaf.getValsLen() - 1);
+                        leftShift(leaf.getVectorOrNodesIds(), minIndex + 1, leaf.getVecOrNodesLen() - 1);
+                        leaf.setValsLen(leaf.getValsLen() - 1);
+                        leaf.setVecOrNodesLen(leaf.getVecOrNodesLen() - 1);
+                        dbDriver.update(leaf);
+                        return true;
+                    } else {
+                        minIndex++;
+                    }
+                }
+            }
+        }
+//        throw new RuntimeException("remove err: " + id);
+        return false;
+    }
+
+    public Quantity countNumber(KDBNode curNode, double[] baseVector, double[] deltaVector) {
+        if (curNode != null) {
+            List<KDBNode> leaves = findLeaves(curNode.getId(), baseVector, deltaVector);
+
+            long count = 0;
+            long all = 0;
+            for (KDBNode leaf : leaves) {
+                Segment segment = findSegmentToSearch(leaf, baseVector, deltaVector);
+                int minIndex = segment.l;
+                int maxIndex = segment.r;
+
+                for (int i = minIndex; i <= Integer.min(maxIndex, leaf.getVecOrNodesLen() - 1); i++) {
+                    DataVector vec = vectorRep.findById(leaf.getVectorOrNodesIds()[i]);
+                    boolean fits = true;
+                    for (int j = 0; j < baseVector.length; j++) {
+                        double vecVal = vec.getVector()[j];
+                        if (vecVal < baseVector[j] - deltaVector[j] || vecVal > baseVector[j] + deltaVector[j]) {
+                            fits = false;
+                            break;
+                        }
+                    }
+                    if (fits) {
+                        count++;
+                    }
+                    all++;
+                }
+            }
+            return new Quantity(count, all);
+        }
+        return new Quantity(0, 0);
+    }
+
+    public List<Long> findImpl(KDBNode curNode, double[] baseVector, double[] deltaVector) {
+        if (curNode != null) {
+            List<KDBNode> leaves = findLeaves(curNode.getId(), baseVector, deltaVector);
+
+            List<Long> ids = new ArrayList<>();
+            for (KDBNode leaf : leaves) {
+                Segment segment = findSegmentToSearch(leaf, baseVector, deltaVector);
+                int minIndex = segment.l;
+                int maxIndex = segment.r;
+
+                for (int i = minIndex; i <= Integer.min(maxIndex, leaf.getVecOrNodesLen() - 1); i++) {
+                    DataVector vec = vectorRep.findById(leaf.getVectorOrNodesIds()[i]);
+                    boolean fits = true;
+                    for (int j = 0; j < baseVector.length; j++) {
+                        double vecVal = vec.getVector()[j];
+                        if (vecVal < baseVector[j] - deltaVector[j] || vecVal > baseVector[j] + deltaVector[j]) {
+                            fits = false;
+                            break;
+                        }
+                    }
+                    if (fits) {
+                        ids.add(leaf.getVectorOrNodesIds()[i]);
+                    }
+                }
+            }
+            return ids;
         }
         return new ArrayList<>(0);
     }
+
+    public List<Long> find(double[] baseVector, double[] deltaVector) {
+        return findImpl(root, baseVector, deltaVector);
+    }
+
 
     @AllArgsConstructor
     static class IntLong {
@@ -547,6 +647,7 @@ public class KDBTree {
     static class NewNode {
 
         double splitter;
+        int splitterIndex;
 
         KDBNode left;
         KDBNode right;
@@ -558,5 +659,19 @@ public class KDBTree {
 
         long vectorId;
         boolean filled;
+    }
+
+    @AllArgsConstructor
+    static class Segment {
+
+        int l;
+        int r;
+    }
+
+    @AllArgsConstructor
+    static class Quantity {
+
+        long counter;
+        long all;
     }
 }

@@ -25,6 +25,6 @@ public class ReverseProposalFactIndex {
     @NotNull
     @NonNull
     @ManyToOne
-    ProposalBD proposalBD;
+    ProposalDB proposalDB;
 
 }

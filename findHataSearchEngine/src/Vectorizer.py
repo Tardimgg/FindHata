@@ -60,8 +60,13 @@ class VectorizerImpl(profile_pb2_grpc.VectorizationService):
         for sent in sents:
             facts = get_facts(sent)
             facts[sent.text] = sent.vector
+            is_negative_list = TonalityModel.get_tonality_vec(list(facts.keys()))
+            i = 0
             for fact_key in facts.keys():
-                is_negative = TonalityModel.get_tonality(fact_key) == "negative"
+                # is_negative = TonalityModel.get_tonality(fact_key) == "negative"
+                is_negative = is_negative_list[i] == "negative"
+                i += 1
+                # is_negative = True
                 response = TextVector(is_negative=is_negative)
                 response.vector.extend(facts[fact_key].tolist())
                 yield response

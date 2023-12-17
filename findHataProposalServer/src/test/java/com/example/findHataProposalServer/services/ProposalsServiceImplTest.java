@@ -1,15 +1,9 @@
 package com.example.findHataProposalServer.services;
 
-import com.example.findHataProposalServer.entities.ProposalBD;
-import com.example.findHataProposalServer.entities.ShortInfoProposal;
+import com.example.findHataProposalServer.entities.ProposalDB;
 import com.example.findHataProposalServer.repositories.ProposalRepository;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.persistence.criteria.Root;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.AdditionalMatchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,7 +22,7 @@ class ProposalsServiceImplTest {
 
     @Test
     void getAllWithKeyword() {
-        ProposalBD f = ProposalBD.builder()
+        ProposalDB f = ProposalDB.builder()
                 .title("hii")
                 .price(10)
                 .description("hihi")
@@ -38,7 +32,7 @@ class ProposalsServiceImplTest {
                 .id(10)
                 .build();
 
-        ProposalBD s = ProposalBD.builder()
+        ProposalDB s = ProposalDB.builder()
                 .title("hi")
                 .price(10)
                 .description("hihi")
@@ -48,7 +42,7 @@ class ProposalsServiceImplTest {
                 .id(0)
                 .build();
 
-        List<ProposalBD> response = new ArrayList<>();
+        List<ProposalDB> response = new ArrayList<>();
         response.add(f);
         response.add(s);
 
@@ -58,7 +52,7 @@ class ProposalsServiceImplTest {
         ProposalsServiceImpl service = new ProposalsServiceImpl();
         service.proposalRepository = proposalRepository;
 
-        assertEquals(service.getAllWithKeyword("hii").get(0).getId(), 10);
+        assertEquals(service.getAllWithKeywordKMP("hii").get(0).getId(), 10);
 
     }
 }

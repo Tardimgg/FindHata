@@ -73,7 +73,7 @@ public class TokenizeFilter implements GlobalFilter {
 
 
         if (path.startsWith("/auth/") || accessToken == null) {
-            System.out.println("gateway: without check token" );
+//            System.out.println("gateway: without check token" );
 
             exchange.getRequest().mutate()
                     .header("userId", "-1")
@@ -148,7 +148,7 @@ public class TokenizeFilter implements GlobalFilter {
                                     return exchange.getResponse().writeWith(Flux.just(buffer));
                                 }
 
-                                System.out.println(exchange.getRequest().getHeaders());
+//                                System.out.println(exchange.getRequest().getHeaders());
                                 return chain.filter(exchange).then(Mono.fromRunnable(() -> {
                                     HttpHeaders headers = exchange.getResponse().getHeaders();
                                     headers.remove("internal_jwt_header");

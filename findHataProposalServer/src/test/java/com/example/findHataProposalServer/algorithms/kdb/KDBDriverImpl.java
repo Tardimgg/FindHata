@@ -7,6 +7,8 @@ public class KDBDriverImpl implements KDBTreeDBDriver {
     HashMap<Long, KDBNode> map = new HashMap<>();
     private long maxId = 0;
 
+    KDBNode root;
+
     @Override
     public KDBNode getNode(long id) {
         return map.get(id);
@@ -21,6 +23,21 @@ public class KDBDriverImpl implements KDBTreeDBDriver {
         map.put(prevMaxId, node);
 
         return prevMaxId;
+    }
+
+    @Override
+    public void updateRoot(KDBNode newRoot) {
+        root = newRoot;
+    }
+
+    @Override
+    public KDBNode getRoot() {
+        return root;
+    }
+
+    @Override
+    public void forgetRoot() {
+        root = null;
     }
 
     @Override

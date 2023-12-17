@@ -1,7 +1,6 @@
 package com.example.findHataProposalServer.services;
 
 import com.example.findHataProposalServer.entities.Proposal;
-import com.example.findHataProposalServer.entities.ProposalBD;
 import com.example.findHataProposalServer.entities.Role;
 import com.example.findHataProposalServer.entities.ShortInfoProposal;
 import com.example.findHataProposalServer.entities.requests.ChangeProposalRequest;
@@ -10,7 +9,6 @@ import com.example.findHataProposalServer.exceptions.NoFoundProposalException;
 import com.example.findHataProposalServer.exceptions.NoRightException;
 
 import java.util.List;
-import java.util.Map;
 
 public interface ProposalsService {
 

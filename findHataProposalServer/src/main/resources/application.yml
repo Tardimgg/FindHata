@@ -27,12 +27,16 @@ spring:
 
 server:
   port: 80
+#  port: 8080
 
 
 
 network_auth_jwt_secret: network_jwt
 
 internal_registration_jwt_secret: internal_registration_jwt
+#vectorized_service_host: 127.0.0.1
+#vectorized_service_post: 9000
 auth_url: http://gateway-server/auth
+#auth_url: http://127.0.0.1:5000/api/auth
 service_login: proposal
 service_password: proposal_password

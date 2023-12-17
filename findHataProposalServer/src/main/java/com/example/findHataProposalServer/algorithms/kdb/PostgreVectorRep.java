@@ -25,4 +25,9 @@ public class PostgreVectorRep implements VectorRep {
         }
         return new DataVector(fact.getId(), fact.getVector());
     }
+
+    @Override
+    public void remove(long id) {
+        factRep.deleteById(id);
+    }
 }

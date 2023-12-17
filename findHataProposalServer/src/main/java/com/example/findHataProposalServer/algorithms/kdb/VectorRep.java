@@ -6,4 +6,6 @@ public interface VectorRep {
     DataVector save(DataVector val);
 
     DataVector findById(long id);
+
+    void remove(long id);
 }

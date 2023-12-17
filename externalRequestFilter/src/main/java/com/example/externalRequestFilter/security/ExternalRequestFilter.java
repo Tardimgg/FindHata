@@ -37,7 +37,7 @@ public class ExternalRequestFilter extends GenericFilterBean {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException,
             ServletException {
 
-        log.warn("start filter");
+        // log.warn("start filter");
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
@@ -110,7 +110,7 @@ public class ExternalRequestFilter extends GenericFilterBean {
             responseWrapper.setHeader("internal_jwt_header", header);
             responseWrapper.setHeader("internal_jwt_signature", signature);
 
-            log.info("payload response: " + payload);
+            // log.info("payload response: " + payload);
 
         }
         responseWrapper.copyBodyToResponse();

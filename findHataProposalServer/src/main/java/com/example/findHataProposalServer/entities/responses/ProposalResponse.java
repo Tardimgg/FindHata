@@ -1,7 +1,7 @@
 package com.example.findHataProposalServer.entities.responses;
 
 import com.example.findHataProposalServer.entities.ImagePath;
-import com.example.findHataProposalServer.entities.ProposalBD;
+import com.example.findHataProposalServer.entities.ProposalDB;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
@@ -34,7 +34,7 @@ public class ProposalResponse {
     @NonNull
     List<String> images;
 
-    public static ProposalResponse fromBD(ProposalBD source) {
+    public static ProposalResponse fromBD(ProposalDB source) {
         return ProposalResponse.builder()
                 .proposalId(source.getId())
                 .title(source.getTitle())
