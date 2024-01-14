@@ -64,7 +64,7 @@ public class ProposalsController {
     }
 
     @PostMapping("/save-image")
-    public Map<String, String> addProposal(@RequestHeader String roles,
+    public Map<String, String> saveImage(@RequestHeader String roles,
                                            @RequestHeader Integer userId,
                                            @RequestHeader String hasAlternativeConnection,
                                            @RequestParam("image") MultipartFile image) {

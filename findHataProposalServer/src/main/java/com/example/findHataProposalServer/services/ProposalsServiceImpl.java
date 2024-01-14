@@ -1,7 +1,14 @@
 package com.example.findHataProposalServer.services;
 
+import akka.Done;
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.japi.Pair;
+import akka.stream.*;
+import akka.stream.javadsl.*;
 import com.example.findHataProposalServer.Profile;
 import com.example.findHataProposalServer.algorithms.KMP;
+import com.example.findHataProposalServer.algorithms.kdb.ByteTransform;
 import com.example.findHataProposalServer.algorithms.kdb.KDBTree;
 import com.example.findHataProposalServer.algorithms.kdb.KDBTreeDBDriver;
 import com.example.findHataProposalServer.algorithms.kdb.VectorRep;
@@ -18,7 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
+import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.system.ApplicationHome;
@@ -28,7 +35,12 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static akka.pattern.Patterns.ask;
+
 
 @Service
 public class ProposalsServiceImpl implements ProposalsService {
@@ -42,7 +54,6 @@ public class ProposalsServiceImpl implements ProposalsService {
     @Value("${spring.application.name}")
     String serviceName;
 
-
     KDBTree kdbTree;
 
     @Autowired
@@ -52,7 +63,7 @@ public class ProposalsServiceImpl implements ProposalsService {
     VectorRep vectorRep;
 
     @Autowired
-    VectorizationServiceClient vecClient;
+    VectorizationServiceRep vecClient;
 
     @Autowired
     ReverseProposalFactIndexRep reverseProposalFactIndexRep;
@@ -60,8 +71,115 @@ public class ProposalsServiceImpl implements ProposalsService {
     @Autowired
     VectorizedFactRep vectorizedFactRep;
 
+    @Autowired
+    ActorSystem actorSystem;
+
+    ActorRef actorOfIndexingProposals;
+
+    final AtomicInteger counter = new AtomicInteger();
+
+    private ClosedShape buildGraph(GraphDSL.Builder<Pair<ActorRef, CompletionStage<Done>>> builder,
+                                   SourceShape<ProposalDB> src,
+                                   SinkShape<Pair<ProposalDB, Profile.VectorizedProposal>> snk) {
+        var unzipFlow = UnzipWith
+                .create((ProposalDB v) -> {
+                    Profile.Proposal proposal = Profile.Proposal.newBuilder()
+                            .setTitle(v.getTitle())
+                            .setDescription(v.getDescription())
+                            .setLocation(v.getLocation())
+                            .build();
+                    return Pair.create(proposal, v);
+                });
+
+        var unzip = builder.add(unzipFlow);
+        var merge = builder.add(
+                ZipWith.create((Profile.VectorizedProposal f, ProposalDB s) -> Pair.create(s, f))
+        );
+
+//        var buffer = Flow.of(Profile.VectorizedProposal.class).buffer(100, OverflowStrategy.backpressure());
+
+        Sink<Profile.Proposal, Publisher<Profile.Proposal>> proposalPub =
+                Sink.asPublisher(AsPublisher.WITHOUT_FANOUT);
+        var mat = proposalPub.preMaterialize(actorSystem);
+        var proposalSub = Source.fromPublisher(mat.first());
+        var responseStream = vecClient.client.vectorizeProposals(proposalSub);
+
+        builder.from(unzip.out0())
+                .to(builder.add(mat.second().async()));
+
+        builder.from(builder.add(responseStream.async()))
+                .toInlet(merge.in0());
+
+        builder.from(unzip.out1())
+                .toInlet(merge.in1());
+
+        builder.from(src).toInlet(unzip.in());
+
+        builder.from(merge.out())
+                .to(snk);
+
+
+        return ClosedShape.getInstance();
+
+    }
+
+    void initAkkaStream() {
+        Source<ProposalDB, ActorRef> source = Source.actorRef(elem -> {
+                    if (elem == Done.done()) return Optional.of(CompletionStrategy.immediately());
+                    else return Optional.empty();
+                },
+                elem -> Optional.empty(),
+                100,
+                OverflowStrategy.fail());
+
+//        AtomicLong all = new AtomicLong();
+        Sink<Pair<ProposalDB, Profile.VectorizedProposal>, CompletionStage<Done>> sink = Sink
+                .foreachAsync(10, (v) -> CompletableFuture.runAsync(() -> {
+//                    long start = System.currentTimeMillis();
+                    try {
+//                        long prev = all.get();
+
+                        for (var vec : v.second().getVectorList()) {
+                            double[] arr = vec.getVectorList().stream().mapToDouble(Double::doubleValue).toArray();
+                            long kdbVecId = kdbTree.insert(arr);
+                            VectorizedFact vectorizedFact = vectorizedFactRep.findById(kdbVecId).orElse(null);
+
+                            ReverseProposalFactIndex index = ReverseProposalFactIndex.builder()
+                                    .proposalDB(v.first())
+                                    .vectorizedFact(vectorizedFact)
+                                    .build();
+
+                            reverseProposalFactIndexRep.save(index);
+
+                        }
+//                        long change = System.currentTimeMillis() - start;
+//                        all.addAndGet(change);
+//                        System.out.println("время на запись в дерево: " + all + " мс"
+//                                + " ( + " + (all.get() - prev) + " мс )");
+
+                        counter.incrementAndGet();
+                        synchronized (counter) {
+                            counter.notify();
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }));
+
+        Graph<ClosedShape, Pair<ActorRef, CompletionStage<Done>>> graph = GraphDSL.create(
+                source, sink, Pair::new, this::buildGraph);
+
+        RunnableGraph<Pair<ActorRef, CompletionStage<Done>>> runnableGraph =
+                RunnableGraph.fromGraph(graph);
+
+        actorOfIndexingProposals = runnableGraph.run(actorSystem).first();
+    }
+
+
     @PostConstruct
     void init() {
+        long startTime = System.currentTimeMillis();
+        initAkkaStream();
         int k = 50;
         if (proposalRepository.findAll().size() != 0) {
             kdbTree = new KDBTree(300, k, kdbTreeDBDriver, vectorRep, kdbTreeDBDriver.getRoot());
@@ -106,42 +224,38 @@ public class ProposalsServiceImpl implements ProposalsService {
 
                 proposalRepository.save(proposalDB);
                 try {
-                    saveVectorInfo(proposalDB);
+//                    CompletionStage<Object> future = ask(saveProposalActor, proposalDB, Duration.ofSeconds(1));
+                    actorOfIndexingProposals.tell(proposalDB, null);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
 
             }
-        } catch (IOException e) {
+
+            synchronized (counter) {
+                counter.wait(100000);
+            }
+            int prev = 0;
+            while (true) {
+                if (counter.get() == init.getProposals().size()) {
+                    break;
+                } else {
+                    if (counter.get() == prev) {
+                        System.out.println("the proposal has not been saved");
+                        break;
+                    }
+                    synchronized (counter) {
+                        prev = counter.get();
+                        counter.wait(100000);
+                    }
+                }
+            }
+        } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
-    }
 
-    @Transactional
-    private void saveVectorInfo(ProposalDB proposal) {
-        Profile.Proposal proposalRequest = Profile.Proposal.newBuilder()
-                .setTitle(proposal.getTitle())
-                .setDescription(proposal.getDescription())
-                .setLocation(proposal.getLocation())
-                .build();
-
-        var ansIter = vecClient.blockingStub.vectorizeProposal(proposalRequest);
-        while (ansIter.hasNext()) {
-            Profile.TextVector vec = ansIter.next();
-
-            double[] doubleVec = vec.getVectorList().stream().mapToDouble(Double::doubleValue).toArray();
-
-            long kdbVecId = kdbTree.insert(doubleVec);
-
-            VectorizedFact vectorizedFact = vectorizedFactRep.findById(kdbVecId).orElse(null);
-
-            ReverseProposalFactIndex index = ReverseProposalFactIndex.builder()
-                    .proposalDB(proposal)
-                    .vectorizedFact(vectorizedFact)
-                    .build();
-
-            reverseProposalFactIndexRep.save(index);
-        }
+        long stopTime = System.currentTimeMillis();
+        System.out.println((stopTime - startTime) / 1000 + " s");
     }
 
     @Override
@@ -169,9 +283,7 @@ public class ProposalsServiceImpl implements ProposalsService {
                     .images(images)
                     .build()
             );
-            saveVectorInfo(proposalDB);
-
-
+            actorOfIndexingProposals.tell(proposalDB, null);
         } else {
             throw new NoRightException("The user does not have the right to add an proposal");
         }
@@ -201,14 +313,11 @@ public class ProposalsServiceImpl implements ProposalsService {
     @Override
     public List<ShortInfoProposal> getAll() {
         List<ProposalDB> proposals = proposalRepository.findAll();
-
         return convertToShortProposal(proposals);
-
     }
 
-
-
     static double[] delta = new double[300];
+
     static {
         Arrays.fill(delta, 0.5);
     }
@@ -228,33 +337,36 @@ public class ProposalsServiceImpl implements ProposalsService {
     }
 
     public List<ShortInfoProposal> getAllWithKeywordKDBTreeImpl(String keyword) {
-                Profile.Request request = Profile.Request.newBuilder().setRequest(keyword).build();
-        var ansIter = vecClient.blockingStub.vectorizeRequest(request);
+        Profile.Request request = Profile.Request.newBuilder().setRequest(keyword).build();
 
+        var res = vecClient.client.vectorizeRequest(request);
+
+        var sink = StreamConverters.<Profile.TextVector>asJavaStream();
+        var it = res.runWith(sink, actorSystem);
 
         Map<Integer, Double> ansIds = new HashMap<>();
-        while (ansIter.hasNext()) {
-            Profile.TextVector vec = ansIter.next();
 
+        it.forEach((vec) -> {
             long time = System.currentTimeMillis();
             double[] vectorizedKeyword = vec.getVectorList().stream().mapToDouble(Double::doubleValue).toArray();
             List<Long> ids = kdbTree.find(vectorizedKeyword, delta);
             long newTime = System.currentTimeMillis();
             System.out.println(newTime - time);
 
-            for (Long id: ids) {
+            for (Long id : ids) {
                 var vecFact = vectorizedFactRep.findById(id).orElse(null);
                 for (ReverseProposalFactIndex index : reverseProposalFactIndexRep.findAllByVectorizedFact(vecFact)) {
                     ansIds.merge(index.getProposalDB().getId(),
-                            cosSimilarity(vectorizedKeyword, vecFact.getVector()),
+                            cosSimilarity(vectorizedKeyword, ByteTransform.toDoubleArray(vecFact.getVector())),
                             Math::max);
                 }
             }
 
-        }
+        });
         List<ProposalDB> proposal = proposalRepository.findAllById(ansIds.keySet());
         proposal.sort(Comparator.comparingDouble((ProposalDB v) -> ansIds.get(v.getId())).reversed());
         return convertToShortProposal(proposal);
+
     }
 
 
@@ -268,15 +380,15 @@ public class ProposalsServiceImpl implements ProposalsService {
         List<ProposalDB> proposals = proposalRepository.findAll(
                 (Specification<ProposalDB>) (root, query, criteriaBuilder) -> {
 
-            Predicate predicate1 = criteriaBuilder.like(criteriaBuilder.lower(
-                    root.get("title")), "%" + keywordFinal + "%");
-            Predicate predicate2 = criteriaBuilder.like(criteriaBuilder.lower(
-                    root.get("description")), "%" + keywordFinal + "%");
-            Predicate predicate3 = criteriaBuilder.like(criteriaBuilder.lower(
-                    root.get("location")), "%" + keywordFinal + "%");
+                    Predicate predicate1 = criteriaBuilder.like(criteriaBuilder.lower(
+                            root.get("title")), "%" + keywordFinal + "%");
+                    Predicate predicate2 = criteriaBuilder.like(criteriaBuilder.lower(
+                            root.get("description")), "%" + keywordFinal + "%");
+                    Predicate predicate3 = criteriaBuilder.like(criteriaBuilder.lower(
+                            root.get("location")), "%" + keywordFinal + "%");
 
-            return criteriaBuilder.or(predicate1, predicate2, predicate3);
-        });
+                    return criteriaBuilder.or(predicate1, predicate2, predicate3);
+                });
 
         proposals.sort((o1, o2) -> {
             String fullText = o1.getTitle() + o1.getDescription() + o1.getLocation();
@@ -298,7 +410,7 @@ public class ProposalsServiceImpl implements ProposalsService {
 
             if (f.size() > 1) {
                 reverseProposalFactIndexRep.delete(reverseFact);
-            } else if (f.size() == 1){
+            } else if (f.size() == 1) {
                 reverseProposalFactIndexRep.delete(reverseFact);
                 kdbTree.remove(reverseFact.getVectorizedFact().getId());
             }
@@ -377,5 +489,4 @@ public class ProposalsServiceImpl implements ProposalsService {
             throw new NoRightException("The user does not have the right to change the proposal");
         }
     }
-
 }

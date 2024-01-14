@@ -6,7 +6,8 @@ option java_package = "com.example.findHataProposalServer";
 option java_generic_services = true;
 
 service VectorizationService {
-    rpc VectorizeProposal(Proposal) returns (stream TextVector) {}
+//     rpc VectorizeProposal(Proposal) returns (stream TextVector) {}
+    rpc VectorizeProposals(stream Proposal) returns (stream VectorizedProposal) {}
     rpc VectorizeRequest(Request) returns (stream TextVector) {}
 }
 
@@ -14,6 +15,11 @@ message Proposal {
     string title = 1;
     string description = 2;
     string location = 3;
+}
+
+
+message VectorizedProposal {
+    repeated TextVector vector = 1;
 }
 
 message Request {

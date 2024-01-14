@@ -2,6 +2,8 @@ package com.example.findHataProposalServer.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.type.descriptor.jdbc.VarbinaryJdbcType;
 
 @Builder
 @Data
@@ -16,6 +18,13 @@ public class VectorizedFact {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+//    @NonNull
+//    double[] vector;
+
+    @Lob
+    @Column(name = "vector_or_nodes_ids")
+    @JdbcType(VarbinaryJdbcType.class)
     @NonNull
-    double[] vector;
+    private byte[] vector;
+
 }

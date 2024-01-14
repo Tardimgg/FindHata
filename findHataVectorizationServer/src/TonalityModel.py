@@ -1,9 +1,9 @@
 from dostoevsky.tokenization import RegexTokenizer
 from dostoevsky.models import FastTextSocialNetworkModel
 
-
 tokenizer = RegexTokenizer()
 model = FastTextSocialNetworkModel(tokenizer=tokenizer)
+
 
 def get_tonality(text):
 
@@ -13,6 +13,7 @@ def get_tonality(text):
     else:
         return "neutral"
 
+
 def get_tonality_vec(vec):
     tonality = ["neutral" for _ in range(len(vec))]
     res = model.predict(vec, k=2)
@@ -21,5 +22,5 @@ def get_tonality_vec(vec):
             tonality[i] = "negative"
         else:
             tonality[i] = "neutral"
-    return tonality;
+    return tonality
 

@@ -4,10 +4,10 @@ import com.example.findHataProposalServer.entities.KDBNodeDB;
 import com.example.findHataProposalServer.entities.KDBRoot;
 import com.example.findHataProposalServer.repositories.KDBNodeRep;
 import com.example.findHataProposalServer.repositories.KDBRootRep;
-import jakarta.transaction.Transactional;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import sun.misc.Unsafe;
 
 import javax.sql.rowset.serial.SerialBlob;
@@ -41,12 +41,39 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
         return fromKDBNodeDB(node);
     }
 
+    /*
+    @Override
+    @Transactional
+    public KDBNode getNodeWithShareLock(long id) {
+        KDBNodeDB node = kdbNodeRep.findByIdForShare(id);
+        if (node == null) {
+            return null;
+        }
+
+        return fromKDBNodeDB(node);
+    }
+
+
+    @Override
+    @Transactional
+    public KDBNode getNodeWithUpdateLock(long id) {
+        KDBNodeDB node = kdbNodeRep.findByIdForUpdate(id);
+        if (node == null) {
+            return null;
+        }
+
+        return fromKDBNodeDB(node);
+    }
+
+     */
+
+
     private KDBNode fromKDBNodeDB(KDBNodeDB node) {
         return KDBNode.builder()
                 .id(node.getId())
                 .isLeaf(node.isLeaf())
-                .vals(toDoubleArray(node.getVals()))
-                .vectorOrNodesIds(toLongArray(node.getVectorOrNodesIds()))
+                .vals(ByteTransform.toDoubleArray(node.getVals()))
+                .vectorOrNodesIds(ByteTransform.toLongArray(node.getVectorOrNodesIds()))
                 .splittingIndex(node.getSplittingIndex())
                 .vecOrNodesLen(node.getVecOrNodesLen())
                 .valsLen(node.getValsLen())
@@ -56,8 +83,8 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
     private KDBNodeDB fromKDBNode(KDBNode node) {
         return KDBNodeDB.builder()
                 .id(node.getId())
-                .vals(toByteArray(node.getVals()))
-                .vectorOrNodesIds(toByteArray(node.getVectorOrNodesIds()))
+                .vals(ByteTransform.toByteArray(node.getVals()))
+                .vectorOrNodesIds(ByteTransform.toByteArray(node.getVectorOrNodesIds()))
                 .isLeaf(node.isLeaf())
                 .splittingIndex(node.getSplittingIndex())
                 .vecOrNodesLen(node.getVecOrNodesLen())
@@ -78,7 +105,7 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
     }
 
     @Override
-    @Transactional
+//    @Transactional
     public void updateRoot(KDBNode newRoot) {
         KDBNodeDB nodeDB = fromKDBNode(newRoot);
 
@@ -98,7 +125,7 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
     }
 
     @Override
-    @Transactional
+//    @Transactional
     public void forgetRoot() {
         kdbRootRep.deleteAll();
     }
@@ -113,41 +140,5 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
     @Override
     public void removeNode(KDBNode node) {
         kdbNodeRep.deleteById(node.getId());
-    }
-
-
-    byte[] toByteArray(long[] obj) {
-        ByteBuffer bb = ByteBuffer.allocate(obj.length * Long.BYTES);
-//        bb.order(ByteOrder.nativeOrder());
-        bb.asLongBuffer().put(obj);
-        return bb.array();
-    }
-
-    byte[] toByteArray(double[] obj) {
-        ByteBuffer bb = ByteBuffer.allocate(obj.length * Long.BYTES);
-//        bb.order(ByteOrder.nativeOrder());
-        bb.asDoubleBuffer().put(obj);
-        return bb.array();
-    }
-
-    long[] toLongArray(byte[] obj) {
-        int count = obj.length / 8;
-        long[] longArray = new long[count];
-        ByteBuffer byteBuffer = ByteBuffer.wrap(obj);
-//        byteBuffer.order(ByteOrder.nativeOrder());
-        for (int i = 0; i < count; i++) {
-            longArray[i] = byteBuffer.getLong();
-        }
-        return longArray;
-    }
-
-    double[] toDoubleArray(byte[] obj) {
-        int count = obj.length / 8;
-        double[] longArray = new double[count];
-        ByteBuffer byteBuffer = ByteBuffer.wrap(obj);
-        for (int i = 0; i < count; i++) {
-            longArray[i] = byteBuffer.getDouble();
-        }
-        return longArray;
     }
 }

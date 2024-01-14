@@ -5,7 +5,7 @@ clean: clean-docker clean-all-files
 
 clean-docker:
 	docker compose down --volumes
-	docker rmi -f findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server findhata-ingress findhata-tunnel findhata-search-engine-server
+	docker rmi -f findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server findhata-ingress findhata-tunnel findhata-vectorization-server
 
 build-all-jar: .findHataAuth.fake .findHataGateway.fake .findHataNotificationServer.fake .findHataMessagingServer.fake .findHataProposalServer.fake .findHataServerDiscovery.fake
 	docker compose build

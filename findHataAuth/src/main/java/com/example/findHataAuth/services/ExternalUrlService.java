@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import jakarta.annotation.PostConstruct;
+
 
 @Service
 @Slf4j
@@ -20,6 +22,7 @@ public class ExternalUrlService {
     private String val;
     private boolean isInit = false;
 
+    @PostConstruct
     private Mono<String> init() {
         if (ngrokMode) {
             WebClient client = WebClient.create();

@@ -4,8 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.IntStream;
 
 public class KDBTree {
+
+    ReadWriteLock lock = new ReentrantReadWriteLock();
 
     private int vectorSize;
     private KDBTreeDBDriver dbDriver;
@@ -23,7 +28,7 @@ public class KDBTree {
     }
 
     public KDBTree(int nodeSize, KDBTreeDBDriver dbDriver, VectorRep vectorRep, KDBNode root) {
-        this(nodeSize, 3, dbDriver,vectorRep, root);
+        this(nodeSize, 3, dbDriver, vectorRep, root);
     }
 
     private KDBNode copyFrom(KDBNode node, int offset, int countValues, int countVectorOrNodes) {
@@ -61,7 +66,7 @@ public class KDBTree {
                 .splitter(splitter)
                 .build();
     }
-    
+
     private KDBNode generateChild(KDBNode node) {
         return KDBNode.builder()
                 .vectorOrNodesIds(new long[2 * k - (node.isLeaf() ? 1 : 0)])
@@ -73,7 +78,7 @@ public class KDBTree {
                 .vecOrNodesLen(0)
                 .build();
     }
-    
+
     private void saveOnLeaf(KDBNode leaf, long nextId, double val) {
         int prevLen = leaf.getVecOrNodesLen();
         leaf.getVectorOrNodesIds()[prevLen] = nextId;
@@ -130,7 +135,7 @@ public class KDBTree {
                 node.setValsLen(prevLen + 1);
             }
 
-        } else if (newChildren.size() != 0){
+        } else if (newChildren.size() != 0) {
             int prevLen = node.getVecOrNodesLen();
             node.getVectorOrNodesIds()[prevLen] = newChildren.get(newChildren.size() - 1).l;
             node.setVecOrNodesLen(prevLen + 1);
@@ -139,6 +144,30 @@ public class KDBTree {
 
     double mid(double f, double s) {
         return f + ((s - f) / 2);
+    }
+
+    static class QuantityAcc implements FindAcc<Quantity> {
+        private long counter = 0;
+        private long all = 0;
+
+        @Override
+        public void foundSuitableElem(DataVector v) {
+            counter++;
+            all++;
+        }
+
+        @Override
+        public void foundUnsuitableElem(DataVector v) {
+            all++;
+        }
+
+        @Override
+        public Quantity get() {
+            return Quantity.builder()
+                    .counter(counter)
+                    .all(all)
+                    .build();
+        }
     }
 
     Optional<Double> findMedian(KDBNode node, int splittingIndex) {
@@ -153,7 +182,7 @@ public class KDBTree {
             baseVector[splittingIndex] = mid(-1.1, mid);
             delta[splittingIndex] = mid - baseVector[splittingIndex];
 
-            Quantity quantity = countNumber(node, baseVector, delta);
+            Quantity quantity = findImpl(node, baseVector, delta, new QuantityAcc());
             long onLeft = quantity.counter;
             long onRight = quantity.all - onLeft;
 
@@ -197,8 +226,8 @@ public class KDBTree {
         throw new RuntimeException(":(");
     }
 
-	KDBNode normalizeNode(KDBNode node) {
-		if (node.getValsLen() == 2 * k - 1) {
+    KDBNode normalizeNode(KDBNode node) {
+        if (node.getValsLen() == 2 * k - 1) {
             NewNode res = splitNode(node);
             KDBNode adapter = generateAdapter(res.splitter,
                     res.left.getId(),
@@ -207,17 +236,18 @@ public class KDBTree {
             );
             adapter.setId(dbDriver.saveNode(adapter));
             return adapter;
-		}
-		return node;
-	}
+        }
+        return node;
+    }
 
     NewNode splitNodeHierarchyBySplitter(long nodeId, int splitterIndex, double splitter) {
         KDBNode node = dbDriver.getNode(nodeId);
 
         KDBNode lNode = generateChild(node);
         KDBNode rNode = generateChild(node);
-        
+
         if (node.isLeaf()) {
+
             for (int i = 0; i < node.getVecOrNodesLen(); i++) {
                 long vecId = node.getVectorOrNodesIds()[i];
                 DataVector vector = vectorRep.findById(vecId);
@@ -258,13 +288,13 @@ public class KDBTree {
                 .splitter(splitter);
         if (lNode.getValsLen() > 0) {
             lNode.setId(dbDriver.saveNode(lNode));
-			lNode = normalizeNode(lNode);
+            lNode = normalizeNode(lNode);
             builder.left(lNode);
 
         }
         if (rNode.getValsLen() > 0) {
             rNode.setId(dbDriver.saveNode(rNode));
-			rNode = normalizeNode(rNode);
+            rNode = normalizeNode(rNode);
             builder.right(rNode);
         }
         return builder.build();
@@ -418,7 +448,7 @@ public class KDBTree {
     }
 
 
-    public long insert(double[] vector) {
+    private long insertImpl(double[] vector) {
         if (root == null) {
             long vectorId = vectorRep.save(new DataVector(vector)).getId();
 
@@ -438,6 +468,7 @@ public class KDBTree {
 
             root.setId(dbDriver.saveNode(root));
             dbDriver.updateRoot(root);
+
             return vectorId;
         } else {
             InsertResp resp = insert(root.getId(), vector);
@@ -465,12 +496,24 @@ public class KDBTree {
 
                         root.setId(dbDriver.saveNode(root));
                         dbDriver.updateRoot(root);
+
                         return resp.vectorId;
                     }
                     count++;
                 }
             }
+
             return resp.vectorId;
+        }
+    }
+
+    public long insert(double[] vector) {
+        lock.writeLock().lock();
+        try {
+            return insertImpl(vector);
+
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -542,7 +585,7 @@ public class KDBTree {
     }
 
 
-    public boolean remove(long id) {
+    public boolean removeImpl(long id) {
         if (root != null) {
             double[] delta = new double[vectorSize];
             double[] baseVector = vectorRep.findById(id).getVector();
@@ -570,50 +613,36 @@ public class KDBTree {
         return false;
     }
 
-    public Quantity countNumber(KDBNode curNode, double[] baseVector, double[] deltaVector) {
-        if (curNode != null) {
-            List<KDBNode> leaves = findLeaves(curNode.getId(), baseVector, deltaVector);
-
-            long count = 0;
-            long all = 0;
-            for (KDBNode leaf : leaves) {
-                Segment segment = findSegmentToSearch(leaf, baseVector, deltaVector);
-                int minIndex = segment.l;
-                int maxIndex = segment.r;
-
-                for (int i = minIndex; i <= Integer.min(maxIndex, leaf.getVecOrNodesLen() - 1); i++) {
-                    DataVector vec = vectorRep.findById(leaf.getVectorOrNodesIds()[i]);
-                    boolean fits = true;
-                    for (int j = 0; j < baseVector.length; j++) {
-                        double vecVal = vec.getVector()[j];
-                        if (vecVal < baseVector[j] - deltaVector[j] || vecVal > baseVector[j] + deltaVector[j]) {
-                            fits = false;
-                            break;
-                        }
-                    }
-                    if (fits) {
-                        count++;
-                    }
-                    all++;
-                }
-            }
-            return new Quantity(count, all);
+    public boolean remove(long id) {
+        lock.writeLock().lock();
+        try {
+            return removeImpl(id);
+        } finally {
+            lock.writeLock().unlock();
         }
-        return new Quantity(0, 0);
     }
 
-    public List<Long> findImpl(KDBNode curNode, double[] baseVector, double[] deltaVector) {
+    private <T> T findImpl(KDBNode curNode, double[] baseVector, double[] deltaVector, FindAcc<T> acc) {
         if (curNode != null) {
             List<KDBNode> leaves = findLeaves(curNode.getId(), baseVector, deltaVector);
 
-            List<Long> ids = new ArrayList<>();
             for (KDBNode leaf : leaves) {
                 Segment segment = findSegmentToSearch(leaf, baseVector, deltaVector);
                 int minIndex = segment.l;
                 int maxIndex = segment.r;
 
-                for (int i = minIndex; i <= Integer.min(maxIndex, leaf.getVecOrNodesLen() - 1); i++) {
-                    DataVector vec = vectorRep.findById(leaf.getVectorOrNodesIds()[i]);
+                int min = minIndex;
+                int max = Integer.min(maxIndex, leaf.getVecOrNodesLen() - 1);
+                List<DataVector> vecs = vectorRep.findByIds(() -> IntStream.rangeClosed(min, max)
+                        .mapToLong((v) -> leaf.getVectorOrNodesIds()[v])
+                        .iterator()
+                );
+
+                // leaf ids in the node always in ascending order
+                vecs.sort(Comparator.comparingLong(DataVector::getId));
+
+                for (int i = min; i <= max; i++) {
+                    DataVector vec = vecs.get(i - min);
                     boolean fits = true;
                     for (int j = 0; j < baseVector.length; j++) {
                         double vecVal = vec.getVector()[j];
@@ -623,17 +652,38 @@ public class KDBTree {
                         }
                     }
                     if (fits) {
-                        ids.add(leaf.getVectorOrNodesIds()[i]);
+                        acc.foundSuitableElem(vec);
+                    } else {
+                        acc.foundUnsuitableElem(vec);
                     }
                 }
             }
+        }
+        return acc.get();
+    }
+
+
+    static class IndexAcc implements FindAcc<List<Long>> {
+        private final List<Long> ids = new ArrayList<>();
+
+        @Override
+        public void foundSuitableElem(DataVector v) {
+            ids.add(v.getId());
+        }
+
+        @Override
+        public List<Long> get() {
             return ids;
         }
-        return new ArrayList<>(0);
     }
 
     public List<Long> find(double[] baseVector, double[] deltaVector) {
-        return findImpl(root, baseVector, deltaVector);
+        lock.readLock().lock();
+        try {
+            return findImpl(root, baseVector, deltaVector, new IndexAcc());
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
 
@@ -668,10 +718,17 @@ public class KDBTree {
         int r;
     }
 
-    @AllArgsConstructor
+    @Builder
     static class Quantity {
 
         long counter;
         long all;
+    }
+
+    interface FindAcc<T> {
+
+        default void foundSuitableElem(DataVector v) {};
+        default void foundUnsuitableElem(DataVector v) {};
+        T get();
     }
 }

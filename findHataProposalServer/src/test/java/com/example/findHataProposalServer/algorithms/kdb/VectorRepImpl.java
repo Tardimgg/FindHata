@@ -1,6 +1,9 @@
 package com.example.findHataProposalServer.algorithms.kdb;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class VectorRepImpl implements VectorRep {
 
@@ -19,6 +22,11 @@ public class VectorRepImpl implements VectorRep {
     @Override
     public DataVector findById(long id) {
         return map.get(id);
+    }
+
+    @Override
+    public List<DataVector> findByIds(Iterable<Long> id) {
+        return StreamSupport.stream(id.spliterator(), false).map(this::findById).collect(Collectors.toList());
     }
 
     @Override

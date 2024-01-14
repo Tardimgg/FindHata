@@ -1,11 +1,10 @@
 import profile_pb2_grpc, TonalityModel
-from profile_pb2 import TextVector
+from profile_pb2 import TextVector, VectorizedProposal
 import spacy
 
 nlp = spacy.load("ru_core_news_lg")
 
 tags = {"NOUN"}
-
 
 def get_vector(text):
     doc = nlp(text)
@@ -26,6 +25,7 @@ def get_facts(sent):
             for v in childs:
                 ans[v] = get_vector(v)
     return ans
+
 
 
 def get_childs_impl(node, cmp):
@@ -50,11 +50,12 @@ def get_childs(node):
     return f, s
 
 
+
 class VectorizerImpl(profile_pb2_grpc.VectorizationService):
 
+
     @staticmethod
-    def __vectorizeText(text):
-        doc = nlp(text)
+    def analyse(doc):
         sents = list(doc.sents)
 
         for sent in sents:
@@ -66,19 +67,25 @@ class VectorizerImpl(profile_pb2_grpc.VectorizationService):
                 # is_negative = TonalityModel.get_tonality(fact_key) == "negative"
                 is_negative = is_negative_list[i] == "negative"
                 i += 1
-                # is_negative = True
-                response = TextVector(is_negative=is_negative)
-                response.vector.extend(facts[fact_key].tolist())
+                # is_negative = False
+                response = TextVector(vector=facts[fact_key].tolist(), is_negative=is_negative)
                 yield response
 
     @staticmethod
-    def VectorizeProposal(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False,
-                          compression=None, wait_for_ready=None, timeout=None, metadata=None):
-        text = ". ".join([request.description, request.title, request.location])
-        yield from VectorizerImpl.__vectorizeText(text)
+    def VectorizeProposals(request_iterator, target, options=(), channel_credentials=None, call_credentials=None,
+                           insecure=False, compression=None, wait_for_ready=None, timeout=None, metadata=None):
+
+        try:
+            text = map(lambda v: ". ".join([v.description, v.title, v.location]), request_iterator)
+            for doc in nlp.pipe(text, batch_size=1):
+                ans = VectorizerImpl.analyse(doc)
+                yield VectorizedProposal(vector=ans)
+        except Exception as e:
+            print(e)
+
+
 
     @staticmethod
     def VectorizeRequest(request, target, options=(), channel_credentials=None, call_credentials=None, insecure=False,
                          compression=None, wait_for_ready=None, timeout=None, metadata=None):
-        yield from VectorizerImpl.__vectorizeText(request.request)
-
+        yield from VectorizerImpl.analyse(nlp(request.request))

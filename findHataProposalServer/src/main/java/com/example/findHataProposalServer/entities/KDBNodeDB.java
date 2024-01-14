@@ -43,5 +43,4 @@ public class KDBNodeDB {
     @Column(name = "vec_or_nodes_len")
     private int vecOrNodesLen;
 
-
 }
