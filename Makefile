@@ -4,11 +4,11 @@ build-in-docker: build-all-jar-in-docker
 clean: clean-docker clean-all-files
 
 clean-docker:
-	docker compose down --volumes
-	docker rmi -f findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server findhata-ingress findhata-tunnel findhata-vectorization-server
+	sudo docker compose down --volumes
+	sudo docker rmi -f findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server findhata-ingress findhata-tunnel findhata-vectorization-server
 
 build-all-jar: .findHataAuth.fake .findHataGateway.fake .findHataNotificationServer.fake .findHataMessagingServer.fake .findHataProposalServer.fake .findHataServerDiscovery.fake
-	docker compose build
+	sudo docker compose build
 
 build-all-jar-in-docker: findHataAuth-preparing-dep findHataGateway-preparing-dep findHataNotificationServer-preparing-dep findHataMessagingServer-preparing-dep findHataProposalServer-preparing-dep findHataServerDiscovery-preparing-dep
 	cp ./build_dep ./findHataAuth
@@ -18,49 +18,49 @@ build-all-jar-in-docker: findHataAuth-preparing-dep findHataGateway-preparing-de
 	cp ./build_dep ./findHataProposalServer
 	cp ./build_dep ./findHataServerDiscovery
 
-	docker compose -f docker-compose-build-in-docker.yml build
+	sudo docker compose -f docker-compose-build-in-docker.yml build
 
 
 clean-all-files:
 	find ./ -maxdepth 1 -name "*.fake" | xargs rm -f
 	rm -f ./*/build_dep
 
-	rm -rf ./databaseCreator/build/libs/*
+	cd databaseCreator; ./gradlew clean; cd ../
 
-	rm -rf ./result/build/libs/*
+	cd result; ./gradlew clean; cd ../
 
-	rm -rf ./tokenService/build/libs/*
+	cd tokenService; ./gradlew clean; cd ../
 
-	rm -rf ./webApiClient/build/libs/*
+	cd webApiClient; ./gradlew clean; cd ../
 	rm -rf ./webApiClient/libs/*
 
-	rm -rf ./externalRequestFilter/build/libs/*
+	cd externalRequestFilter; ./gradlew clean; cd ../
 	rm -rf ./externalRequestFilter/libs/*
 
-	rm -rf ./findHataAuth/build/libs/*
+	cd findHataAuth; ./gradlew clean; cd ../
 	rm -rf ./findHataAuth/libs/*
 	rm -rf ./findHataAuth/docker/*.jar
 
-	rm -rf ./findHataGateway/build/libs/*
+	cd findHataGateway; ./gradlew clean; cd ../
 	rm -rf ./findHataGateway/libs/*
 	rm -rf ./findHataGateway/docker/*.jar
 
-	rm -rf ./findHataNotificationServer/build/libs/*
+	cd findHataNotificationServer; ./gradlew clean; cd ../
 	rm -rf ./findHataNotificationServer/libs/*
 	rm -rf ./findHataNotificationServer/docker/*.jar
 
-	rm -rf ./findHataMessagingServer/build/libs/*
+	cd findHataMessagingServer; ./gradlew clean; cd ../
 	rm -rf ./findHataMessagingServer/libs/*
 	rm -rf ./findHataMessagingServer/docker/*.jar
 
-	rm -rf ./findHataProposalServer/build/libs/*
+	cd findHataProposalServer; ./gradlew clean; cd ../
 	rm -rf ./findHataProposalServer/libs/*
 	rm -rf ./findHataProposalServer/docker/*.jar
 
-	rm -rf ./findHataServerDiscovery/build/libs/*
+	cd findHataServerDiscovery; ./gradlew clean; cd ../
 	rm -rf ./findHataServerDiscovery/docker/*.jar
 
-	rm -rf ./findHataUploadServer/build/libs/*
+	cd findHataUploadServer; ./gradlew clean; cd ../
 	rm -rf ./findHataUploadServer/docker/*.jar
 
 

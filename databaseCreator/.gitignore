@@ -4,6 +4,9 @@
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
 
 # Folder config file
 Desktop.ini
