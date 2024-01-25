@@ -28,12 +28,7 @@ docker compose up
 ```
 Также вы можете собрать проект внутри docker
 ```bash
-make build-in-docker;
-docker compose up
-```
-Вместо make вы можете использовать скрипт fullrestart (Требуется Java и Gradle)
-```bash
-./fullrestart
+docker compose -f docker-compose-build-in-docker.yml up
 ```
 
 В локальной сети сайт использует 5000 порт.

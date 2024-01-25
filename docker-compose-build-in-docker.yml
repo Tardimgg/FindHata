@@ -2,6 +2,25 @@ version: "3.9"
 
 services:
 
+  result:
+    build: ./result
+
+  token-service:
+    build: ./tokenService
+
+  database-creator:
+    build: ./databaseCreator
+
+  external-request-filter:
+    build: ./externalRequestFilter
+    depends_on:
+      - token-service
+
+  web-api-client:
+    build: ./webApiClient
+    depends_on:
+      - token-service
+
   data-base:
     build: ./findHataDataBase
     environment:
@@ -21,6 +40,10 @@ services:
     depends_on:
       - data-base
       - discovery-server
+      - token-service
+      - result
+      - database-creator
+      - external-request-filter
 
   gateway-server:
     build: ./findHataGateway
@@ -30,6 +53,8 @@ services:
         # - "8080:80"
     depends_on:
       - discovery-server
+      - web-api-client
+      - result
 
   messaging-server:
     build: ./findHataMessagingServer
@@ -40,6 +65,10 @@ services:
     depends_on:
       - data-base
       - discovery-server
+      - web-api-client
+      - result
+      - database-creator
+      - external-request-filter
 
   proposal-server:
     build: ./findHataProposalServer
@@ -57,6 +86,19 @@ services:
     depends_on:
       - data-base
       - discovery-server
+      - result
+      - database-creator
+      - external-request-filter
+      - upload-server
+
+  upload-server:
+    build: ./findHataUploadServer
+    depends_on:
+      - data-base
+      - discovery-server
+      - result
+      - database-creator
+      - external-request-filter
 
   vectorization-server:
     build: ./findHataVectorizationServer
@@ -66,12 +108,17 @@ services:
   auth-server:
     build: ./findHataAuth
     environment:
-        - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
-        - externalUrl=http://127.0.0.1:8080
-        - ngrokMode=true
+      - eureka.client.serviceUrl.defaultZone=http://discovery-server:8761/eureka
+      - externalUrl=http://127.0.0.1:8080
+      - ngrokMode=true
     depends_on:
       - data-base
       - discovery-server
+      - web-api-client
+      - result
+      - database-creator
+      - external-request-filter
+
 
   frontend-server:
     build: ./findHataFrontend

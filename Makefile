@@ -5,20 +5,10 @@ clean: clean-docker clean-all-files
 
 clean-docker:
 	sudo docker compose down --volumes
-	sudo docker rmi -f findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server findhata-ingress findhata-tunnel findhata-vectorization-server
+	sudo docker rmi -f findhata-gateway-server findhata-auth-server findhata-notification-server findhata-discovery-server findhata-data-base findhata-messaging-server findhata-proposal-server findhata-frontend-server findhata-ingress findhata-tunnel findhata-vectorization-server findhata-upload-server findhata-web-api-client findhata-external-request-filter findhata-token-service findhata-result findhata-database-creator
 
 build-all-jar: .findHataAuth.fake .findHataGateway.fake .findHataNotificationServer.fake .findHataMessagingServer.fake .findHataProposalServer.fake .findHataServerDiscovery.fake
 	sudo docker compose build
-
-build-all-jar-in-docker: findHataAuth-preparing-dep findHataGateway-preparing-dep findHataNotificationServer-preparing-dep findHataMessagingServer-preparing-dep findHataProposalServer-preparing-dep findHataServerDiscovery-preparing-dep
-	cp ./build_dep ./findHataAuth
-	cp ./build_dep ./findHataGateway
-	cp ./build_dep ./findHataMessagingServer
-	cp ./build_dep ./findHataNotificationServer
-	cp ./build_dep ./findHataProposalServer
-	cp ./build_dep ./findHataServerDiscovery
-
-	sudo docker compose -f docker-compose-build-in-docker.yml build
 
 
 clean-all-files:
@@ -62,56 +52,6 @@ clean-all-files:
 
 	cd findHataUploadServer; ./gradlew clean; cd ../
 	rm -rf ./findHataUploadServer/docker/*.jar
-
-
-databaseCreator-preparing-dep:
-result-preparing-dep:
-tokenService-preparing-dep:
-
-webApiClient-preparing-dep: tokenService-preparing-dep
-	mkdir -p ./webApiClient/libs
-	cp -r ./tokenService ./webApiClient/libs/tokenService
-
-externalRequestFilter-preparing-dep: tokenService-preparing-dep
-	mkdir -p ./externalRequestFilter/libs
-	cp -r ./tokenService ./externalRequestFilter/libs/tokenService
-
-findHataAuth-preparing-dep: webApiClient-preparing-dep result-preparing-dep databaseCreator-preparing-dep externalRequestFilter-preparing-dep
-	mkdir -p ./findHataAuth/libs
-	cp -r ./webApiClient ./findHataAuth/libs/webApiClient
-	cp -r ./result ./findHataAuth/libs/result/
-	cp -r ./databaseCreator ./findHataAuth/libs/databaseCreator
-	cp -r ./externalRequestFilter ./findHataAuth/libs/externalRequestFilter
-
-findHataGateway-preparing-dep: webApiClient-preparing-dep result-preparing-dep
-	mkdir -p ./findHataGateway/libs
-	cp -r ./webApiClient ./findHataGateway/libs/webApiClient
-	cp -r ./result ./findHataGateway/libs/result
-
-findHataNotificationServer-preparing-dep: tokenService-preparing-dep result-preparing-dep databaseCreator-preparing-dep externalRequestFilter-preparing-dep
-	mkdir -p ./findHataNotificationServer/libs
-	cp -r ./tokenService ./findHataNotificationServer/libs/tokenService
-	cp -r ./databaseCreator ./findHataNotificationServer/libs/databaseCreator
-	cp -r ./result ./findHataNotificationServer/libs/result
-	cp -r ./externalRequestFilter ./findHataNotificationServer/libs/externalRequestFilter
-
-findHataMessagingServer-preparing-dep: webApiClient-preparing-dep result-preparing-dep databaseCreator-preparing-dep externalRequestFilter-preparing-dep
-	mkdir -p ./findHataMessagingServer/libs
-	cp -r ./webApiClient ./findHataMessagingServer/libs/webApiClient
-	cp -r ./databaseCreator ./findHataMessagingServer/libs/databaseCreator
-	cp -r ./result ./findHataMessagingServer/libs/result
-	cp -r ./externalRequestFilter ./findHataMessagingServer/libs/externalRequestFilter
-
-findHataProposalServer-preparing-dep: result-preparing-dep databaseCreator-preparing-dep externalRequestFilter-preparing-dep
-	mkdir -p ./findHataProposalServer/libs
-	cp -r ./result ./findHataProposalServer/libs/result
-	cp -r ./databaseCreator ./findHataProposalServer/libs/databaseCreator
-	cp -r ./externalRequestFilter ./findHataProposalServer/libs/externalRequestFilter
-	cp -r ./findHataUploadServer ./findHataProposalServer/libs/findHataUploadServer
-
-findHataServerDiscovery-preparing-dep:
-
-findHataUploadServer-preparing-dep:
 
 
 .databaseCreator.fake:
