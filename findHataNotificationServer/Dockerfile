@@ -7,10 +7,10 @@ FROM gradle:8.3-jdk20-alpine AS build
 WORKDIR /app
 
 COPY ./ ./
-COPY --from=token-service /app/build/libs/*.jar ./libs
-COPY --from=result /app/build/libs/*.jar ./libs
-COPY --from=database-creator /app/build/libs/*.jar ./libs
-COPY --from=external-request-filter /app/build/libs/*.jar ./libs
+COPY --from=token-service /app/build/libs/*.jar ./libs/
+COPY --from=result /app/build/libs/*.jar ./libs/
+COPY --from=database-creator /app/build/libs/*.jar ./libs/
+COPY --from=external-request-filter /app/build/libs/*.jar ./libs/
 
 RUN ./gradlew bootJar
 

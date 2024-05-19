@@ -6,8 +6,8 @@ WORKDIR /app
 
 
 COPY ./ ./
-COPY --from=web-api-client /app/build/libs/*.jar ./libs
-COPY --from=result /app/build/libs/*.jar ./libs
+COPY --from=web-api-client /app/build/libs/*.jar ./libs/
+COPY --from=result /app/build/libs/*.jar ./libs/
 
 RUN ./gradlew bootJar
 
