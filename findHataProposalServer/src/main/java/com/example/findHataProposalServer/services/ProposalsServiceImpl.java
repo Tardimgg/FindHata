@@ -191,8 +191,8 @@ public class ProposalsServiceImpl implements ProposalsService {
 
         ObjectMapper mapper = new ObjectMapper();
 
-        String initPath = home.getDir().getAbsoluteFile() + "/init.json";
-//        String initPath = "./docker/init.json";
+//        String initPath = home.getDir().getAbsoluteFile() + "/init.json";
+        String initPath = "./docker/init.json";
 //        String initPath = "./docker/prev_init.json";
         System.out.println("init path: " + initPath);
 

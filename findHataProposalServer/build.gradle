@@ -54,6 +54,8 @@ dependencies {
 
 	implementation 'org.springframework.boot:spring-boot-starter-validation:3.0.5'
 
+	implementation 'org.apache.zookeeper:zookeeper:3.4.11'
+
 //	implementation files('libs/tokenService-1.0-all.jar')
 	implementation files('libs/externalRequestFilter-1.0-all.jar')
 	implementation files('libs/databaseCreator-1.0-all.jar')

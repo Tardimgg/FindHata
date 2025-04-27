@@ -41,6 +41,15 @@ services:
       - data-base
       - discovery-server
 
+  global-zookeeper:
+    image: zookeeper
+    restart: always
+    hostname: global-zookeper
+    ports:
+        - 2181:2181
+    environment:
+        ZOO_MY_ID: 1
+
   proposal-server:
     build: ./findHataProposalServer/docker
     environment:
@@ -58,6 +67,7 @@ services:
       - data-base
       - discovery-server
       - vectorization-server
+      - global-zookeeper
 
   vectorization-server:
     build: ./findHataVectorizationServer

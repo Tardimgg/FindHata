@@ -12,10 +12,10 @@ public class KDBTree {
 
     ReadWriteLock lock = new ReentrantReadWriteLock();
 
-    private int vectorSize;
-    private KDBTreeDBDriver dbDriver;
+    private final int vectorSize;
+    private final KDBTreeDBDriver dbDriver;
     private KDBNode root;
-    private VectorRep vectorRep;
+    private final VectorRep vectorRep;
 
     private int k = 3;
 
@@ -411,7 +411,19 @@ public class KDBTree {
             return new InsertResp(dataVector.getId(), currentNode.getValsLen() == k * 2 - 1);
 
         } else {
-            KDBNode child = dbDriver.getNode(currentNode.getVectorOrNodesIds()[index]);
+            long childId = currentNode.getVectorOrNodesIds()[index];
+            Optional<Lock> readLock = Optional.of(dbDriver.readLock(childId));
+            KDBNode child = dbDriver.getNode(childId);
+
+            Optional<Lock> writeLock = Optional.empty();
+
+            if (child.isLeaf() || child.getValsLen() == k * 2 - 3) {
+                writeLock = Optional.of(dbDriver.writeLock(childId));
+
+                readLock.get().unlock();
+                readLock = Optional.empty();
+            }
+
             InsertResp resp = insert(child.getId(), vector);
 
             currentNode = dbDriver.getNode(currentNodeId); // update node
@@ -443,68 +455,84 @@ public class KDBTree {
 
                 return new InsertResp(resp.vectorId, currentNode.getValsLen() == k * 2 - 1);
             }
+            readLock.ifPresent(Lock::unlock);
+            writeLock.ifPresent(Lock::unlock);
+
             return new InsertResp(resp.vectorId, false);
         }
     }
 
 
     private long insertImpl(double[] vector) {
-        if (root == null) {
-            long vectorId = vectorRep.save(new DataVector(vector)).getId();
+        synchronized (KDBTree.class) {
+            if (root == null) {
+                long vectorId = vectorRep.save(new DataVector(vector)).getId();
 
-            double[] vals = new double[2 * k - 1];
-            vals[0] = vector[0];
-            long[] vectorIds = new long[2 * k - 1];
-            vectorIds[0] = vectorId;
+                double[] vals = new double[2 * k - 1];
+                vals[0] = vector[0];
+                long[] vectorIds = new long[2 * k - 1];
+                vectorIds[0] = vectorId;
 
-            root = KDBNode.builder()
-                    .isLeaf(true)
-                    .splittingIndex(0)
-                    .vals(vals)
-                    .vectorOrNodesIds(vectorIds)
-                    .valsLen(1)
-                    .vecOrNodesLen(1)
-                    .build();
+                root = KDBNode.builder()
+                        .isLeaf(true)
+                        .splittingIndex(0)
+                        .vals(vals)
+                        .vectorOrNodesIds(vectorIds)
+                        .valsLen(1)
+                        .vecOrNodesLen(1)
+                        .build();
 
-            root.setId(dbDriver.saveNode(root));
-            dbDriver.updateRoot(root);
+                root.setId(dbDriver.saveNode(root));
+                dbDriver.updateRoot(root);
 
-            return vectorId;
-        } else {
-            InsertResp resp = insert(root.getId(), vector);
-            root = dbDriver.getNode(root.getId());
-            if (resp.filled) {
-                int splittingIndex = normalize((root.getSplittingIndex() - 1) % vectorSize, vectorSize);
-                int count = 0;
-                while (true) {
-                    if (count > vectorSize) {
-                        throw new RuntimeException("infinite loop");
-                    }
-                    Double splitter = findMedian(root, splittingIndex).orElse(null);
-                    if (splitter == null) {
-                        splittingIndex--;
-                        splittingIndex = normalize(splittingIndex, vectorSize);
-                    } else {
-                        dbDriver.forgetRoot();
-                        NewNode newRoot = splitNodeHierarchyBySplitter(root.getId(),
-                                splittingIndex, splitter);
-
-                        root = generateAdapter(splitter,
-                                newRoot.left.getId(),
-                                newRoot.right.getId(),
-                                splittingIndex);
-
-                        root.setId(dbDriver.saveNode(root));
-                        dbDriver.updateRoot(root);
-
-                        return resp.vectorId;
-                    }
-                    count++;
-                }
+                return vectorId;
             }
-
-            return resp.vectorId;
         }
+        Optional<Lock> readLock = Optional.of(dbDriver.readLock(root.getId()));
+        Optional<Lock> writeLock = Optional.empty();
+        if (root.isLeaf() || root.getValsLen() == k * 2 - 3) {
+            writeLock = Optional.of(dbDriver.writeLock(root.getId()));
+
+            readLock.get().unlock();
+            readLock = Optional.empty();
+        }
+
+        InsertResp resp = insert(root.getId(), vector);
+        dbDriver.readLock(root.getId());
+        root = dbDriver.getNode(root.getId());
+        if (resp.filled) {
+            int splittingIndex = normalize((root.getSplittingIndex() - 1) % vectorSize, vectorSize);
+            int count = 0;
+            while (true) {
+                if (count > vectorSize) {
+                    throw new RuntimeException("infinite loop");
+                }
+                Double splitter = findMedian(root, splittingIndex).orElse(null);
+                if (splitter == null) {
+                    splittingIndex--;
+                    splittingIndex = normalize(splittingIndex, vectorSize);
+                } else {
+                    dbDriver.forgetRoot();
+                    NewNode newRoot = splitNodeHierarchyBySplitter(root.getId(),
+                            splittingIndex, splitter);
+
+                    root = generateAdapter(splitter,
+                            newRoot.left.getId(),
+                            newRoot.right.getId(),
+                            splittingIndex);
+
+                    root.setId(dbDriver.saveNode(root));
+                    dbDriver.updateRoot(root);
+
+                    return resp.vectorId;
+                }
+                count++;
+            }
+        }
+        readLock.ifPresent(Lock::unlock);
+        writeLock.ifPresent(Lock::unlock);
+
+        return resp.vectorId;
     }
 
     public long insert(double[] vector) {

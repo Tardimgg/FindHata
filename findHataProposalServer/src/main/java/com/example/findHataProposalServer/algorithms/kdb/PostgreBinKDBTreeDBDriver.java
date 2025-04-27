@@ -4,18 +4,14 @@ import com.example.findHataProposalServer.entities.KDBNodeDB;
 import com.example.findHataProposalServer.entities.KDBRoot;
 import com.example.findHataProposalServer.repositories.KDBNodeRep;
 import com.example.findHataProposalServer.repositories.KDBRootRep;
-import lombok.SneakyThrows;
+import com.example.findHataProposalServer.services.zookeeper.DistributedLock;
+import com.example.findHataProposalServer.services.zookeeper.ZkManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-import sun.misc.Unsafe;
 
-import javax.sql.rowset.serial.SerialBlob;
-import java.lang.reflect.Field;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.LongBuffer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
@@ -26,6 +22,10 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
 
     @Autowired
     private KDBRootRep kdbRootRep;
+
+    @Autowired
+    private ZkManager zkManager;
+
 
     PostgreBinKDBTreeDBDriver(KDBNodeRep kdbNodeRep) {
         this.kdbNodeRep = kdbNodeRep;
@@ -40,6 +40,32 @@ public class PostgreBinKDBTreeDBDriver implements KDBTreeDBDriver {
 
         return fromKDBNodeDB(node);
     }
+
+    @Override
+    public Lock readLock(long id) {
+        DistributedLock lock = zkManager.readLock(Long.toString(id));
+        lock.lock();
+        return lock::unlock;
+    }
+
+//    @Override
+//    public void cancelReadLock(long id) {
+//        DistributedLock lock = readLocks.remove(id);
+//        lock.unlock();
+//    }
+
+    @Override
+    public Lock writeLock(long id) {
+        DistributedLock lock = zkManager.writeLock(Long.toString(id));
+        lock.lock();
+        return lock::unlock;
+    }
+
+//    @Override
+//    public void cancelWriteLock(long id) {
+//        DistributedLock lock = writeLocks.remove(id);
+//        lock.unlock();
+//    }
 
     /*
     @Override
